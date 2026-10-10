@@ -128,4 +128,4 @@ export class TimingDecoder {
     }
   }
 }
-export { ToneDetector } from './tone-detector.mjs';
+export { ToneDetector } from '../audio/tone-detector.mjs';

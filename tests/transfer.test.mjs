@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MAX_BYTES, base32Encode, base32Decode, crc32, makePacket, readPacket, framesIn, TimingDecoder, ToneDetector, timeline, duration, normalizePlain, toMorse} from '../core.mjs';
+import {MAX_BYTES, base32Encode, base32Decode, crc32, makePacket, readPacket, framesIn, TimingDecoder, ToneDetector, timeline, duration, normalizePlain, toMorse} from '../src/lib/morse.mjs';
 const encode=text=>new TextEncoder().encode(text);
 test('exact transfer preserves mixed case, whitespace, Ethiopic and emoji',()=>{
   const text='Hello\n  ሰላም 👋!\t';

@@ -1,7 +1,8 @@
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
-import {TimingDecoder,timeline} from '../core.mjs';
+import {TimingDecoder,timeline} from '../src/lib/morse.mjs';
 const events=[]; let Processor;
 const context=vm.createContext({sampleRate:12000,AudioWorkletProcessor:class {constructor(){this.port={postMessage:event=>events.push(event)};}},registerProcessor:(name,Constructor)=>{assert.equal(name,'morse-receiver');Processor=Constructor;}});
 const modules=new Map();
@@ -10,7 +11,7 @@ async function load(url) {
   const mod=new vm.SourceTextModule(await readFile(url,'utf8'),{context,identifier:url.href}); modules.set(url.href,mod);
   await mod.link((specifier,ref)=>load(new URL(specifier,ref.identifier))); return mod;
 }
-const module=await load(new URL('../receiver-worklet.mjs',import.meta.url)); await module.evaluate();
+const module=await load(process.argv[2] ? pathToFileURL(process.argv[2]) : new URL('../src/audio/receiver-worklet.mjs',import.meta.url)); await module.evaluate();
 const receiver=new Processor({processorOptions:{frequency:700,threshold:.01}});
 let offset=0;
 for(const segment of [{on:false,units:8},...timeline('SOS TEST 123'),{on:false,units:8}]) {

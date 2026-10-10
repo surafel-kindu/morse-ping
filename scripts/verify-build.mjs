@@ -1,0 +1,13 @@
+import { readdir, readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import assert from 'node:assert/strict';
+const assets = new URL('../dist/assets/', import.meta.url);
+const files = await readdir(assets);
+const worklets = files.filter(name => /^receiver-worklet-.*\.js$/.test(name));
+assert.equal(worklets.length, 1, 'Expected one standalone production AudioWorklet asset');
+const html = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
+assert.ok(!html.includes('/src/main.jsx'), 'Production HTML must use built assets');
+const result = spawnSync(process.execPath, ['--experimental-vm-modules', fileURLToPath(new URL('../tests/worklet-harness.mjs', import.meta.url)), fileURLToPath(new URL(worklets[0], assets))], { encoding: 'utf8' });
+assert.equal(result.status, 0, result.stderr);
+console.log('Production HTML and bundled AudioWorklet verified.');
