@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f5ed">
+  <meta name="description" content="Send tiny files and text between devices using Morse sound. A local browser experiment.">
+  <title>Morse Transfer — messages through sound</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <main>
+    <header class="topbar"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">•• —</span> MORSE TRANSFER</a><span class="tag">BROWSER AUDIO EXPERIMENT</span></header>
+    <section class="intro">
+      <div><p class="eyebrow">SPEAKER → AIR → MICROPHONE</p><h1>A little message.<br>A different way to send it.</h1><p class="lede">Turn text or a tiny file into Morse sound. Open this page on a second device to listen and put it back together.</p></div>
+      <div class="signal-art" aria-hidden="true"><span>•</span><span>•</span><span>•</span><b>—</b><b>—</b><b>—</b><span>•</span><span>•</span><span>•</span><small>S O S</small></div>
+    </section>
+    <section class="settings" aria-label="Shared audio settings">
+      <div class="settings-caption"><span class="small-dot"></span><strong>Match on both devices</strong><span>Start at 20–30 WPM in a quiet room.</span></div>
+      <label>Speed <select id="speed"><option value="10">10 WPM</option><option value="20">20 WPM</option><option value="30" selected>30 WPM</option><option value="40">40 WPM</option><option value="50">50 WPM · experimental</option></select></label>
+      <label>Tone <select id="frequency"><option value="550">550 Hz</option><option value="700" selected>700 Hz</option><option value="900">900 Hz</option></select></label>
+    </section>
+    <div class="workspace">
+      <section class="card sender" aria-labelledby="send-heading">
+        <div class="card-heading"><div><p class="eyebrow">01 / TRANSMIT</p><h2 id="send-heading">Send a message</h2></div><span class="round-icon" aria-hidden="true">↗</span></div>
+        <div class="tabs" role="tablist" aria-label="Input type"><button id="text-tab" class="tab active" role="tab" aria-selected="true" aria-controls="text-panel">Text</button><button id="file-tab" class="tab" role="tab" aria-selected="false" aria-controls="file-panel" tabindex="-1">File</button></div>
+        <div id="text-panel" role="tabpanel" aria-labelledby="text-tab"><label class="field-label" for="message">Your message</label><textarea id="message" rows="5" placeholder="A message worth sending…">Hello from the other side.</textarea><div class="field-footer"><span id="text-note">Send letters, numbers &amp; punctuation directly.</span><span id="input-count">26 characters</span></div></div>
+        <div id="file-panel" role="tabpanel" aria-labelledby="file-tab" hidden><label class="file-drop" for="file"><span class="file-icon" aria-hidden="true">↥</span><strong id="file-label">Choose a tiny file</strong><span>Any file type · up to 2 KB</span><input id="file" type="file"></label><p class="helper">A photo is usually too large. Try a small .txt or .json file.</p></div>
+        <label class="mode-label">Encoding <select id="mode"><option value="plain" selected>Direct text · letters &amp; numbers</option><option value="exact">Exact transfer · Unicode / file</option></select></label>
+        <div class="estimate"><div><span>TRANSMISSION TIME</span><strong id="duration">—</strong></div><div><span>PAYLOAD</span><strong id="payload-size">—</strong></div><span class="tone-light" id="tone-light" aria-label="Tone off"></span></div>
+        <progress id="send-progress" value="0" max="1" aria-label="Transmission progress"></progress>
+        <div class="button-row"><button class="primary" id="send">▶ Play Morse sound</button><button class="secondary" id="stop-send" disabled>Stop</button></div>
+        <div id="send-status" class="status" role="status" aria-live="polite">Ready when you are. Start the receiver first.</div>
+        <details><summary>See the Morse code <span>↙</span></summary><pre id="send-morse" class="morse-box"></pre><p id="encoding-note" class="helper">Direct text sends each letter or number as its own Morse symbol.</p></details>
+      </section>
+      <section class="card receiver" aria-labelledby="receive-heading">
+        <div class="card-heading"><div><p class="eyebrow">02 / RECEIVE</p><h2 id="receive-heading">Listen &amp; restore</h2></div><span class="round-icon" aria-hidden="true">↙</span></div>
+        <label class="mode-label" for="receive-mode">Listen as <select id="receive-mode"><option value="plain" selected>Text · letters &amp; numbers</option><option value="exact">File / exact Unicode text</option></select></label>
+        <p id="receive-mode-note" class="helper">Letters appear as they arrive. Match the sender’s Direct text mode.</p>
+        <div class="listen-display"><div id="listen-orb" class="listen-orb" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><strong id="listen-label">Waiting for a signal</strong><span id="listen-hint">Use this side on your receiving device.</span><div class="meter-track"><div id="signal-meter"></div></div></div>
+        <label class="sensitivity-label" for="threshold"><span>Detection threshold <output id="threshold-value">0.010</output></span><input id="threshold" type="range" min="1" max="50" value="10"><small>Lower if tones are missed. Raise if room noise becomes dots.</small></label>
+        <div class="button-row"><button class="primary receive-button" id="listen">◉ Start listening</button><button class="secondary" id="stop-listen" disabled>Stop</button></div>
+        <div id="receive-status" class="status" role="status" aria-live="polite">Microphone audio stays on this device.</div>
+        <div class="result" id="result" hidden><div class="result-heading"><strong id="result-title">Message received</strong><span class="verified" id="result-badge">✓ CHECKSUM OK</span></div><pre id="received-text"></pre><button id="download" class="secondary">Download original</button></div>
+        <details id="receive-details"><summary>Live decoded signal <span>↙</span></summary><label class="field-label">Morse symbols</label><pre id="received-morse" class="morse-box">Dots and dashes will appear here.</pre><label class="field-label">Decoded characters</label><pre id="received-characters" class="morse-box">Waiting…</pre></details>
+        <div class="receiver-tools"><button id="self-test" class="text-button">Run audio self-test</button><button id="clear" class="text-button">Clear signal</button></div>
+      </section>
+    </div>
+    <section class="how-to" aria-label="How to transfer"><div><span>1</span><p><strong>Open on two devices</strong>Use HTTPS on phones; localhost works for local testing.</p></div><div><span>2</span><p><strong>Listen, then play</strong>Match speed and tone. Keep the devices close and the receiver page active.</p></div><div><span>3</span><p><strong>Read or restore</strong>Text appears live. File and exact Unicode transfers require a valid checksum.</p></div></section>
+    <footer><span>Small payloads. Real sound. No upload.</span><span>Prototype · acoustic performance depends on your devices.</span></footer>
+  </main>
+</body>
+</html>
