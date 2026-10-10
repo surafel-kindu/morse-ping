@@ -7,7 +7,7 @@
 | Vite reports an unsupported Node version | The terminal is using an older default Node | Run `nvm use`; confirm `node --version` is 22.12+ |
 | The old interface appears | An old server or cached page is still open | Stop the old vanilla server, run `npm run dev`, and open the URL Vite prints |
 | Microphone API is unavailable | Insecure HTTP origin | Use HTTPS or localhost on that device |
-| Phone cannot listen through an HTTP LAN URL | HTTP LAN origins are generally not secure contexts | Serve the production build with trusted HTTPS |
+| Phone cannot listen through an HTTP LAN URL | HTTP LAN origins are generally not secure contexts | Follow the [Cloudflare HTTPS setup](getting-started.md#temporary-https-with-cloudflared) or use a trusted HTTPS host |
 | Permission is denied | Browser or OS microphone permission was rejected | Allow the microphone for this site in browser/OS settings, then retry |
 | Permission remains pending | A browser/OS prompt awaits a choice | Resolve the prompt or press Stop; a stream granted after cancellation is immediately released |
 | No tone is detected | Wrong tone, quiet speaker, or high threshold | Match pitch, increase volume moderately, move closer, lower threshold, restart |
@@ -21,6 +21,21 @@
 | Audio stops when phone locks or page goes to background | Browser/OS audio suspension | Keep pages active and devices unlocked throughout the transfer |
 | File transfer takes minutes | Morse plus Base32/metadata has low throughput | Use a tiny file; use Direct text for ordinary messages |
 | Self-test passes but devices fail | Self-test bypasses speaker, microphone, and room acoustics | Follow the physical setup steps and test error rates at lower speed |
+
+## Cloudflare tunnel setup
+
+Follow the [two-terminal HTTPS setup](getting-started.md#temporary-https-with-cloudflared) first.
+
+| Symptom | What to do |
+| --- | --- |
+| `cloudflared: command not found` | Install it with `brew install cloudflared` on macOS, or follow the [official downloads guide](https://developers.cloudflare.com/tunnel/downloads/); check `cloudflared --version` |
+| Preview reports that port 4173 is in use | Choose a free port and change it in both the preview and tunnel commands; keep `--strictPort` |
+| Tunnel URL returns 502 or cannot reach the origin | Keep the preview running; confirm `http://127.0.0.1:4173` opens on the computer and matches the tunnel’s `--url` |
+| Vite reports a blocked host | Include `--http-host-header localhost` in the tunnel command |
+| Phone still shows the HTTPS requirement | Open the printed `https://…trycloudflare.com` URL rather than the old HTTP LAN URL |
+| HTTPS loads but microphone permission is denied | Allow microphone access for the new tunnel URL in Safari/Chrome and OS settings; restart listening |
+| An old tunnel URL no longer opens | Keep the computer awake and both processes running; after restarting the tunnel, use its newly printed URL |
+| Source edits do not appear on the phone | Rebuild with `npm run build`, restart the preview on the same port, and refresh the phone |
 
 ## Browser checklist
 

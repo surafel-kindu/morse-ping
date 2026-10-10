@@ -25,9 +25,37 @@ Open the Local URL printed by Vite, normally `http://localhost:5173`. If that po
 
 > Stop the previous vanilla development server before restarting this React version. The old `server.mjs` entry point has been replaced by Vite. Do not open `index.html` directly.
 
+## Test on your phone with HTTPS
+
+Phone browsers block microphone access on ordinary HTTP LAN addresses. For a temporary HTTPS address, install [cloudflared](https://developers.cloudflare.com/tunnel/downloads/) on your Mac with Homebrew:
+
+```sh
+brew install cloudflared
+```
+
+In the project folder, start a production preview in the first terminal:
+
+```sh
+nvm use
+npm run build
+npm run preview -- --port 4173 --strictPort
+```
+
+Keep it running. In a second terminal, start the tunnel:
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:4173 --http-host-header localhost
+```
+
+Open the printed **`https://…trycloudflare.com`** URL in Safari or Chrome on your phone, press **Start listening**, and allow the microphone. Keep both terminals running. Stop each with **Ctrl+C** when finished.
+
+[Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) need no Cloudflare account or domain. Anyone with the URL can open the preview; the address changes on restart and stops working when the tunnel stops. This setup is for temporary testing. It gives the phone HTTPS access to the app; Morse still travels through the speaker and microphone, so keep the devices near each other.
+
+See [phone setup and tunnel troubleshooting](docs/getting-started.md#temporary-https-with-cloudflared) for other platforms, port changes, and rebuilding after edits.
+
 ## Your first transfer
 
-1. Open the app on both devices. Phones need an **HTTPS-hosted build** for microphone access.
+1. Open the app on both devices. Phones need an **HTTPS-hosted build** for microphone access; use the Cloudflare tunnel above for testing.
 2. Match **30 WPM** and **700 Hz**. Use **Direct text** on the sender and **Text · letters & numbers** on the receiver.
 3. Press **Start listening** on the receiver and allow microphone access.
 4. Enter `HELLO 123` on the sender and press **Play Morse sound**.
@@ -41,7 +69,7 @@ The app’s **Read the guide** link opens a built-in field guide with mode selec
 
 | Guide | What it covers |
 | --- | --- |
-| [Getting started](docs/getting-started.md) | Installation, scripts, both modes, two-device setup, HTTPS deployment |
+| [Getting started](docs/getting-started.md) | Installation, scripts, both modes, two-device setup, Cloudflare tunnels, HTTPS deployment |
 | [Architecture](docs/architecture.md) | React components, hooks, audio sessions, data flow, resource cleanup |
 | [Transfer protocol](docs/protocol.md) | Morse timing, Base32 framing, metadata, checksum, decoder rules |
 | [Troubleshooting](docs/troubleshooting.md) | Microphone access, noise, missed tones, mode mismatch, slow transfers |
@@ -98,5 +126,6 @@ Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, b
 - [International Morse timing](https://morsecode.world/international/timing/)
 - [Microphone secure contexts and permission](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
 - [AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet)
+- [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)
 
 An alternative Morse library is [morse-pro](https://github.com/scp93ch/morse-pro), whose maintainer links to its GitLab home. This app keeps its Morse and framing implementation small and independent of that library.

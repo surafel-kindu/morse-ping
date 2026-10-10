@@ -52,6 +52,8 @@ npm run preview -- --port 4174
 
 Check direct text → Text mode and exact Unicode → File / exact Unicode mode with the in-app self-test. Also check file selection, validation errors, keyboard tabs, playback start/stop, receiver cancellation, the field guide, and narrow-screen layout.
 
+For temporary phone testing, use the [cloudflared HTTPS tunnel setup](getting-started.md#temporary-https-with-cloudflared) to serve the production preview. Rebuild after source edits; preview does not provide development hot reload.
+
 For physical testing, open an HTTPS build on two devices, start reception first, and use tiny test messages. Record device/browser names, WPM, frequency, distance, threshold, and the success/error rate. Synthetic checks should never be reported as measured speaker-to-microphone reliability.
 
 ## Production worklet

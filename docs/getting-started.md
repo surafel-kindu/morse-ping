@@ -62,6 +62,44 @@ Vite bundles the microphone worklet as a separate ES module with a generated ass
 
 The local dev/preview server binds to loopback by default. `--host 0.0.0.0` can make a dev server reachable on a LAN, but **ordinary HTTP on a LAN still does not enable phone microphone access**. Use a trusted HTTPS host or an HTTPS development proxy. Do not disable browser security or bypass certificate warnings.
 
+### Temporary HTTPS with cloudflared
+
+A phone can load the app through your computer’s HTTP LAN address, but its browser blocks microphone access there. `localhost` on the phone refers to the phone itself. A [Cloudflare Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) provides a temporary trusted HTTPS URL for the local preview without a Cloudflare account or domain. Both the computer and phone need internet access for this setup.
+
+**1. Install cloudflared once.** On macOS with Homebrew:
+
+```sh
+brew install cloudflared
+```
+
+If Homebrew is unavailable, or you use Windows/Linux, follow the official [cloudflared downloads and installation instructions](https://developers.cloudflare.com/tunnel/downloads/). Confirm installation with `cloudflared --version`.
+
+**2. Start the built app in the first terminal.** Run from the project folder, with dependencies installed as described above:
+
+```sh
+nvm use
+npm run build
+npm run preview -- --port 4173 --strictPort
+```
+
+Skip `nvm use` if you already use a compatible Node version without nvm. Keep the preview running. `--strictPort` makes Vite fail if 4173 is occupied rather than quietly choosing another port. If you choose another free port, use that same port in both commands. The server can stay bound to loopback; no `--host 0.0.0.0` or router port forwarding is needed.
+
+**3. Start the HTTPS tunnel in a second terminal.**
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:4173 --http-host-header localhost
+```
+
+The `--http-host-header localhost` option sends an accepted local Host header to Vite, avoiding a blocked-host response without changing Vite’s allowed-host configuration. The tunnel serves the production build through the preview server.
+
+**4. Open the printed HTTPS URL on the phone.** Look for an address ending in `trycloudflare.com` in the tunnel output. Open that exact `https://` address in Safari or Chrome, press **Start listening**, and allow the microphone. You can open the same URL on both devices, then follow the [speaker-to-microphone workflow](#speaker-to-microphone-workflow).
+
+Keep both terminals running and the computer awake. Stop the tunnel and preview with **Ctrl+C** in their respective terminals when finished. Anyone with the generated URL can open the preview. It changes each time the tunnel restarts and stops working when the tunnel process stops. Quick Tunnels are for temporary testing; use a trusted static HTTPS host for a lasting deployment.
+
+The tunnel delivers the webpage; it does not relay Morse audio between devices. Keep the devices near each other so the receiver’s microphone can hear the sender’s speaker. Selected content and microphone samples are still processed locally by the app. Web requests for the preview pass through Cloudflare.
+
+After source changes, stop the preview, run `npm run build`, restart the preview on the same port, and refresh the phone. The existing tunnel can remain running while you rebuild. For setup errors, see [tunnel troubleshooting](troubleshooting.md#cloudflare-tunnel-setup).
+
 ## Privacy
 
 Selected files, decoded content, and microphone samples stay in the browser. No analytics or upload endpoint is built in. The acoustic transmission itself is audible to nearby devices and people and is not encrypted. Stopping reception or leaving the page releases audio resources. Host/server access logging, if any, is controlled by your chosen hosting provider.
