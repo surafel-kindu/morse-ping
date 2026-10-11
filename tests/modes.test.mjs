@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { prepareText, prepareFile, createMessageDecoder, runAudioSelfTest, formatTime } from '../src/lib/transfer.mjs';
+import { TONE_OPTIONS } from '../src/lib/audio-options.mjs';
 import { readPacket, timeline } from '../src/lib/morse.mjs';
 function deliver(decoder, wire, wpm = 30) {
   let time = .5;
@@ -46,3 +47,8 @@ test('self-test cancellation emits no later results', async () => {
   assert.equal(count, 0);
 });
 test('time labels round across minute boundary', () => { assert.equal(formatTime(59.5), '1m 0s'); assert.equal(formatTime(61.1), '1m 2s'); });
+
+for (const frequency of TONE_OPTIONS) for (const mode of ['plain', 'exact']) test(`80 WPM self-test restores ${mode} mode at ${frequency} Hz`, async () => {
+  const result = await runAudioSelfTest({ wpm: 80, frequency, threshold: .01, mode });
+  assert.equal(result.text, mode === 'plain' ? 'HELLO 123' : 'Hi 👋');
+});

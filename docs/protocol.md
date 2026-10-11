@@ -113,6 +113,9 @@ The outer checksum is checked before showing **Locked**. Authentication is check
 | 20 | 60 ms | 7.08 sec | 20.96 min |
 | 30 | 40 ms | 4.72 sec | 13.97 min |
 | 50 | 24 ms | 2.83 sec | 8.38 min |
+| 80 | 15 ms | 1.77 sec | 5.24 min |
+
+Changing the tone frequency changes the pitch, not these durations. The available presets and receiver limits are described in [higher-speed/tone testing](getting-started.md#try-higher-speeds-and-tones).
 
 The file example uses bytes 0–255 repeated, filename `sample.bin`, and type `application/octet-stream`. These values are calculated from the emitted timing sequence. They are not measured performance guarantees. Actual duration depends on the Morse lengths of the encoded content and metadata; successful reception also depends on hardware, noise, and echoes.
 

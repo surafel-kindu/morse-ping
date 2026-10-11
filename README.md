@@ -115,13 +115,13 @@ vite.config.mjs                React build and ES-module worklet bundling
 
 At 30 WPM, plain `HELLO WORLD` takes about **4.7 seconds**. A representative 1 KiB exact file takes about **14 minutes**, including framing; duration varies with its contents and metadata. These are calculated transmission times, not measured acoustic throughput. The app shows the duration for your input.
 
-Start at 20–30 WPM. Fifty WPM is experimental. Exact and secure original payloads are capped at 2,048 bytes. Sender and receiver must agree on mode, speed, and tone. Room noise, echo, clipping, browser audio processing, and background suspension affect reception.
+Speed presets now cover **10–80 WPM** (10, 20, 30, 40, 50, 60, 70, 80). Tone presets cover **550–4,000 Hz** (550, 700, 900, 1,200, 1,500, 2,000, 3,000, 4,000). Start at 20–30 WPM and 700 Hz. Speeds of 50 WPM or higher and tones above 900 Hz are experimental. See [trying higher speeds and tones](docs/getting-started.md#try-higher-speeds-and-tones). Exact and secure original payloads are capped at 2,048 bytes. Sender and receiver must agree on mode, speed, and tone. Room noise, echo, clipping, browser audio processing, and background suspension affect reception.
 
 CRC32 detects accidental corruption; it does not correct errors or authenticate a sender. Secure transfer adds AES-GCM encryption and authentication; Direct text and Exact transfer remain unencrypted. Encryption adds transmission overhead, included in the displayed estimate. There is no acknowledgement, chunking, automatic retry, or resume. Resend a failed exact transfer from the beginning.
 
 ## Validation
 
-Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, boundaries, corruption, sampled audio at 10–50 WPM with modest noise and jitter, worklet processing without DOM globals, encrypted round trips, wrong codes, tampering with recomputed checksums, and Web Crypto interoperability. The browser self-test uses generated audio through the same detector and decoder. It does not exercise a physical speaker/microphone pair. Real two-device acoustic reception remains a device-specific test.
+Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, boundaries, corruption, sampled audio at 10–80 WPM with modest noise and jitter, combined higher-speed/tone checks at 12/44.1/48 kHz sample rates, worklet processing without DOM globals, encrypted round trips, wrong codes, tampering with recomputed checksums, and Web Crypto interoperability. The browser self-test uses generated audio through the same detector and decoder. It does not exercise a physical speaker/microphone pair. Real two-device acoustic reception remains a device-specific test.
 
 ## References
 

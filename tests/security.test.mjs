@@ -4,6 +4,7 @@ import { webcrypto } from 'node:crypto';
 import { base32Encode, base32Decode, crc32, makePacket, timeline } from '../src/lib/morse.mjs';
 import { generateSecret, normalizeSecret, encryptPacket, decryptPacket, readEncryptedPacket, encryptedFramesIn } from '../src/lib/security.mjs';
 import { prepareSecureText, prepareFile, createMessageDecoder, runAudioSelfTest } from '../src/lib/transfer.mjs';
+import { TONE_OPTIONS } from '../src/lib/audio-options.mjs';
 const utf8 = new TextEncoder();
 const code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const wrongCode = 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
@@ -95,4 +96,9 @@ test('secure browser self-test can leave a packet locked for the real unlock wor
   const result = await runAudioSelfTest({ wpm: 30, frequency: 700, threshold: .01, mode: 'secure', code, keepLocked: true, onResult: value => results.push(value) });
   assert.equal(result.text, 'Hi 👋'); assert.equal(results.length, 1); assert.equal(results[0].locked, true);
   assert.equal(results[0].text, undefined); assert.equal((await decryptPacket(results[0].frame, code)).text, result.text);
+});
+
+for (const frequency of TONE_OPTIONS) test(`80 WPM encrypted audio self-test authenticates at ${frequency} Hz`, async () => {
+  const result = await runAudioSelfTest({ wpm: 80, frequency, threshold: .01, mode: 'secure', code });
+  assert.equal(result.text, 'Hi 👋'); assert.equal(result.encrypted, true); assert.equal(result.verified, true);
 });

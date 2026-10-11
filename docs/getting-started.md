@@ -49,6 +49,27 @@ Exact mode encodes the original bytes into Morse-compatible Base32 characters. M
 
 Playback, listening, and the synthetic self-test are mutually exclusive on a single app instance. Stop the active action before changing audio settings or receiver mode. Cancelling a pending microphone request prevents a subsequently granted stream from staying active.
 
+## Try higher speeds and tones
+
+| Control | Available presets |
+| --- | --- |
+| Speed | 10, 20, 30, 40, 50, **60, 70, 80 WPM** |
+| Tone | 550, 700, 900, **1,200, 1,500, 2,000, 3,000, 4,000 Hz** |
+
+The default remains 30 WPM / 700 Hz. Speeds of 50 WPM or higher and tones above 900 Hz are marked experimental. Match both settings on the sender and receiver, including when using Secure transfer.
+
+1. Establish a successful short transfer at the default settings.
+2. Try 60 WPM, then 70 and 80, keeping the tone unchanged. Change one setting at a time so you can identify what affects reception.
+3. Try a higher tone such as 1,200 or 1,500 Hz. Test other presets with the same short message before attempting a file.
+4. Run the audio self-test at each setting. In secure mode, unlock the generated test packet to check authentication.
+5. Repeat on the actual speaker/microphone pair. If text is wrong or a packet fails its checksum, lower the speed or return to a tone that worked.
+
+WPM controls transmission duration: 80 WPM is 1.6 times as fast as 50 WPM for the same prepared packet. A dot lasts 15 ms at 80 WPM, compared with 24 ms at 50. Increasing Hz changes the pitch, not the Morse timing or amount of data sent per second. A higher tone may suit a particular speaker/microphone, but is not automatically more reliable.
+
+Synthetic tests restore packets at all offered higher-speed/tone combinations with modest generated noise and timing jitter, at 12,000, 44,100, and 48,000 samples per second. Direct, exact, and secure self-tests also pass at 80 WPM across all tones. These checks bypass real room acoustics, device filtering, clipping, and echo.
+
+The current detector lost packets in synthetic probes at 100–120 WPM, so the interface stops at 80 WPM. Its five-millisecond analysis windows and two-window confirmation leave less timing margin as dots get shorter. Faster presets would require further receiver tuning and testing.
+
 ## Local self-test
 
 Choose a receiver mode and press **Run audio self-test**. Text mode restores `HELLO 123`; exact mode restores `Hi 👋` with a valid checksum. Secure mode needs a shared code and leaves an encrypted test packet locked; press **Unlock & authenticate** to restore `Hi 👋`. The signal is synthesized and decoded in memory. This checks application logic without requesting microphone access or playing sound.

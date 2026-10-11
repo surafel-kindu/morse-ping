@@ -62,7 +62,7 @@ Cleanup closes the `AudioContext`, stops microphone tracks, disconnects nodes, c
 
 The detector uses five-millisecond windows, sine/cosine correlation at the selected frequency, an amplitude threshold, tone purity, and hysteresis. Two successive windows confirm a transition. It posts transition timestamps and periodic level updates to the main thread.
 
-`TimingDecoder` interprets on/off durations at the selected WPM. `createMessageDecoder` either emits letters directly scans for exact-transfer frames and verifies them, or captures a validated encrypted MTE1 packet as a locked result. Unlocking happens only after listening stops, outside the real-time audio path. A successful AES-GCM check then releases the original; failed authentication leaves the packet locked for another attempt. Clearing during an unlock invalidates late crypto results. The algorithm expects machine-generated Morse at a known pitch/speed; it does not recognize a person speaking the words “dot” and “dash.”
+`TimingDecoder` interprets on/off durations at the selected WPM. `createMessageDecoder` either emits letters directly, scans for exact-transfer frames and verifies them, or captures a validated encrypted MTE1 packet as a locked result. Unlocking happens only after listening stops, outside the real-time audio path. A successful AES-GCM check then releases the original; failed authentication leaves the packet locked for another attempt. Clearing during an unlock invalidates late crypto results. The algorithm expects machine-generated Morse at a known pitch/speed; it does not recognize a person speaking the words “dot” and “dash.”
 
 ## Worklet bundling
 

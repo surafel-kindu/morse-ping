@@ -26,6 +26,7 @@ There are no runtime calls to a backend, CDN fonts, or an external Morse service
 | `src/audio/tone-detector.mjs` | Changing signal detection, windows, thresholds, or hysteresis |
 | `src/audio/receiver-worklet.mjs` | Changing worklet channel handling or processor integration |
 | `src/lib/morse.mjs` | Changing Morse symbols, timings, Base32, CRC32, or packet validation |
+| `src/lib/audio-options.mjs` | Changing the bounded speed/tone presets offered in the UI |
 | `src/lib/security.mjs` | Changing shared-code validation, HKDF/AES-GCM, or encrypted framing |
 | `src/lib/transfer.mjs` | Changing direct/exact/secure preparation, message interpretation, or synthetic self-test |
 
@@ -41,7 +42,7 @@ npm run check
 
 Tests use Node’s built-in test runner. Production verification runs that same harness against the emitted worklet, checking that bundling preserves its processing behavior. The isolated AudioWorklet harness runs in a subprocess with VM modules enabled so the processor executes without browser DOM globals. Synthetic audio tests feed actual samples through the same detector used by the microphone worklet.
 
-Coverage includes Unicode and arbitrary-byte round trips; direct text without a byte frame; incremental text reception; exact-mode corruption rejection; empty/oversize files; Base32 boundaries; CRC32; Morse timing; 10–50 WPM with modest generated noise/jitter; supported pitches; off-frequency rejection; self-test cancellation; worklet registration/silent output; encrypted Unicode/binary round trips; wrong codes; salt, nonce, and ciphertext tampering despite recomputed CRC32; malformed encrypted frames; plaintext downgrade rejection; and independent Web Crypto interoperability.
+Coverage includes Unicode and arbitrary-byte round trips; direct text without a byte frame; incremental text reception; exact-mode corruption rejection; empty/oversize files; Base32 boundaries; CRC32; Morse timing; 10–80 WPM with modest generated noise/jitter; all tone presets through 4,000 Hz; higher-speed/tone combinations at 12/44.1/48 kHz sample rates; direct/exact/secure self-tests at 80 WPM; off-frequency rejection; self-test cancellation; worklet registration/silent output; encrypted Unicode/binary round trips; wrong codes; salt, nonce, and ciphertext tampering despite recomputed CRC32; malformed encrypted frames; plaintext downgrade rejection; and independent Web Crypto interoperability.
 
 ## Browser verification
 
@@ -55,7 +56,7 @@ First verify Secure transfer: generate a code, run the audio self-test, try unlo
 
 For temporary phone testing, use the [cloudflared HTTPS tunnel setup](getting-started.md#temporary-https-with-cloudflared) to serve the production preview. Rebuild after source edits; preview does not provide development hot reload.
 
-For physical testing, open an HTTPS build on two devices, start reception first, and use tiny test messages. Record device/browser names, WPM, frequency, distance, threshold, and the success/error rate. Synthetic checks should never be reported as measured speaker-to-microphone reliability.
+For physical testing, open an HTTPS build on two devices, start reception first, and use tiny test messages. Record device/browser names, WPM, frequency, distance, threshold, and the success/error rate. For higher settings, follow [higher-speed/tone testing](getting-started.md#try-higher-speeds-and-tones) and include 60, 70, and 80 WPM with tones above 900 Hz. The isolated worklet harness tests 80 WPM at 700 and 4,000 Hz, including the emitted production bundle. Synthetic checks should never be reported as measured speaker-to-microphone reliability.
 
 ## Production worklet
 

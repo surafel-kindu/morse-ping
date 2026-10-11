@@ -12,6 +12,7 @@
 | Permission remains pending | A browser/OS prompt awaits a choice | Resolve the prompt or press Stop; a stream granted after cancellation is immediately released |
 | No tone is detected | Wrong tone, quiet speaker, or high threshold | Match pitch, increase volume moderately, move closer, lower threshold, restart |
 | Room noise creates dots | Threshold is too low or other sound overlaps the tone | Raise threshold and move to a quieter room |
+| Higher experimental settings fail | Dots are shorter or the devices reproduce the tone poorly | Lower WPM first, try a previously successful tone, and test a short message; see [higher-speed/tone testing](getting-started.md#try-higher-speeds-and-tones) |
 | Letters are wrong | Speed mismatch, echo, clipping, or interrupted audio | Match WPM, try 20 WPM, lower excessive volume, reposition the devices |
 | Encoded characters appear instead of original text | Receiver is in Text mode while sender uses Exact mode | Select File / exact Unicode on the receiver and resend |
 | No restored result in exact mode | Sender used Direct text, or frame is incomplete | Match modes; clear the signal and resend the entire exact transfer |

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MAX_BYTES, base32Encode, base32Decode, crc32, makePacket, readPacket, framesIn, TimingDecoder, ToneDetector, timeline, duration, normalizePlain, toMorse} from '../src/lib/morse.mjs';
+import { SPEED_OPTIONS, TONE_OPTIONS } from '../src/lib/audio-options.mjs';
 const encode=text=>new TextEncoder().encode(text);
 test('exact transfer preserves mixed case, whitespace, Ethiopic and emoji',()=>{
   const text='Hello\n  ሰላም 👋!\t';
@@ -56,12 +57,12 @@ function decodeAudio(wire,{wpm=30,frequency=700,sampleRate=48000,amplitude=.2,no
   }
   decoder.advance(count/sampleRate+1); return {text:decoder.text.trim(),morse:decoder.morse,maxAmplitude};
 }
-for (const wpm of [10,20,30,40,50]) test(`sampled audio restores exact packet at ${wpm} WPM (44.1 kHz, noise and jitter)`,()=>{
+for (const wpm of SPEED_OPTIONS) test(`sampled audio restores exact packet at ${wpm} WPM (44.1 kHz, noise and jitter)`,()=>{
   const original='Hi ሰላም 👋\n'; const packet=makePacket(encode(original),{name:'',type:''});
   const decoded=decodeAudio(packet,{wpm,sampleRate:44100,jitter:.08});
   assert.equal(decoded.text,packet); assert.equal(readPacket(decoded.text).text,original);
 });
-for (const frequency of [550,700,900]) test(`sampled audio detects Morse at ${frequency} Hz`,()=>{
+for (const frequency of TONE_OPTIONS) test(`sampled audio detects Morse at ${frequency} Hz`,()=>{
   assert.equal(decodeAudio('SOS TEST 123',{frequency}).text,'SOS TEST 123');
 });
 test('noise and a strongly off-frequency tone do not decode into messages',()=>{
@@ -71,4 +72,13 @@ test('noise and a strongly off-frequency tone do not decode into messages',()=>{
 });
 test('invalid long pulse is not silently treated as a valid dash',()=>{
   const decoder=new TimingDecoder(30); decoder.update(true,1); decoder.update(false,2); decoder.advance(3); assert.equal(decoder.text.trim(),'?');
+});
+
+for (const sampleRate of [12000, 44100, 48000]) test(`higher-speed and higher-tone combinations restore a noisy exact packet at ${sampleRate} Hz sample rate`, () => {
+  const packet = makePacket(encode('Fast 123! 👋'), { name: '', type: '' });
+  for (const wpm of [50, 60, 70, 80]) for (const frequency of TONE_OPTIONS) {
+    const decoded = decodeAudio(packet, { wpm, frequency, sampleRate, jitter: .08 });
+    assert.equal(decoded.text, packet, `${wpm} WPM / ${frequency} Hz`);
+    assert.equal(readPacket(decoded.text).text, 'Fast 123! 👋');
+  }
 });
