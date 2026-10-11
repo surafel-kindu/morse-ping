@@ -10,6 +10,8 @@ Send letters directly as Morse beeps, or transfer a tiny file to another device 
 | Direct text | Live uppercase letters, numbers, supported punctuation | Unencrypted; no checksum |
 | File / exact Unicode | Original bytes, case, emoji, and formatting | Unencrypted; CRC32 detects corruption; maximum 2 KB |
 
+<img width="1223" height="877" alt="Screenshot 2026-10-11 at 9 35 44 AM" src="https://github.com/user-attachments/assets/9fdcd391-8ead-4073-b0a1-8a74682fd161" />
+
 ## Quick start
 
 Use **Node.js 22.12 or newer**. This project includes `.nvmrc` for Node 22.22.2.
