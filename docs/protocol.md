@@ -54,7 +54,7 @@ Fields are separated by ordinary Morse word gaps:
 | `CHECKSUM` | Eight uppercase hexadecimal characters containing CRC32 |
 | `END` | Frame terminator |
 
-Base32 uses `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567`. Every character is representable by standard Morse. Receiver mode chooses whether decoded characters are displayed as plain text or interpreted as this file/Unicode protocol; the microphone detector itself is shared by direct, exact, and secure modes.
+Base32 uses `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567`. Every character is representable by standard Morse. Receiver mode chooses whether decoded characters are displayed as plain text or interpreted as this file/Unicode protocol; the microphone detector itself is shared by direct and exact modes, with or without character shuffle.
 
 ### Header
 
@@ -81,30 +81,20 @@ A checksum failure produces an error and does not deliver that frame as a restor
 
 MT1 is a small experimental one-way protocol. CRC32 detects accidental errors; it is not authentication or encryption. There is no acknowledgement, sequence number, automatic retry, chunking, resume, or forward error correction. A failed transfer must be resent in full.
 
-## Encrypted frame, version MTE1
+## Character shuffle
+
+The fixed source alphabet is `ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`. The shared code is a permutation of those same 36 characters. For each source character, transmit the code character at its index. On reception, find the heard character in the code and restore the source character at that index. Punctuation and spaces pass through unchanged.
 
 ```text
-VVV MTE1 SALT NONCE CIPHERTEXT CHECKSUM END
+Code:     CDEFGHIJKLMNOPQRSTUVWXYZAB0123456789
+Original: HELLO 123!
+Wire:     JGNNQ 123!
+Restored: HELLO 123!
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `SALT` | 16 random bytes, 26 unpadded Base32 characters |
-| `NONCE` | 12 random bytes, 20 unpadded Base32 characters |
-| `CIPHERTEXT` | AES-GCM encrypted UTF-8 MT1 frame followed by its 16-byte tag, in unpadded Base32 |
-| `CHECKSUM` | CRC32 over decoded salt, nonce, then ciphertext including tag |
+Direct text is normalized before substitution and restored incrementally. Exact text/files use the ordinary MT1 frame above: substitute the complete frame before Morse generation, then reverse it before finding and validating frames. The checksum covers the original decoded header and payload bytes, exactly as in unshuffled MT1.
 
-The shared code is 20 random bytes, displayed as 32 Base32 characters grouped with dashes. Decode the canonical, uppercase, whitespace/dash-free code to bytes. Import these as HKDF key material and derive a non-extractable 256-bit AES-GCM key with SHA-256, the decoded salt, and UTF-8 info:
-
-```text
-Morse Transfer / MTE1 / AES-256-GCM / HKDF-SHA-256
-```
-
-Use the same UTF-8 string as AES-GCM additional authenticated data, the decoded nonce as `iv`, and `tagLength: 128`. The encrypted plaintext is the complete validated MT1 frame as UTF-8, preserving the original payload and hiding the filename, type, and inner length. This suite is fixed; incoming data cannot select weaker algorithms or change a derivation work factor.
-
-Parsing requires exactly seven fields, canonical Base32, exact salt/nonce sizes, at least a 16-byte tag, an eight-character hexadecimal checksum, ciphertext no larger than 6,000 bytes, and frame text no longer than 9,800 characters. The recovered inner MT1 frame must pass its existing validation, including the 2,048-byte original payload limit. The 16,000-character decoder window fits the maximum outer frame. Secure reception does not accept MT1 or direct text as original content.
-
-The outer checksum is checked before showing **Locked**. Authentication is checked only on **Unlock & authenticate**. Wrong-code or altered-packet failures release no plaintext and preserve the captured packet for another attempt. The shared code is never transmitted. A fresh preparation generates a new salt and nonce; replaying a prepared sound repeats the existing ciphertext. There is no persistent replay protection or forward secrecy. See [security assumptions](security.md#protection-and-limits).
+No shuffle marker, code, or additional framing is transmitted. Both devices must already agree on the shuffle setting and alphabet. Wrong alphabets cannot be reliably detected in direct text; exact mode may fail to recognize a frame or reject it. This fixed substitution provides no authentication. See [shuffle limits](security.md#protection-and-limits).
 
 ## Speed examples
 
@@ -117,6 +107,6 @@ The outer checksum is checked before showing **Locked**. Authentication is check
 
 Changing the tone frequency changes the pitch, not these durations. The available presets and receiver limits are described in [higher-speed/tone testing](getting-started.md#try-higher-speeds-and-tones).
 
-The file example uses bytes 0–255 repeated, filename `sample.bin`, and type `application/octet-stream`. These values are calculated from the emitted timing sequence. They are not measured performance guarantees. Actual duration depends on the Morse lengths of the encoded content and metadata; successful reception also depends on hardware, noise, and echoes.
+The file example uses bytes 0–255 repeated, filename `sample.bin`, and type `application/octet-stream`. These values are calculated from the unshuffled timing sequence. They are not measured performance guarantees. Actual duration depends on the Morse lengths of the encoded content and metadata; successful reception also depends on hardware, noise, and echoes.
 
 [International Morse timing reference](https://morsecode.world/international/timing/)

@@ -27,8 +27,8 @@ There are no runtime calls to a backend, CDN fonts, or an external Morse service
 | `src/audio/receiver-worklet.mjs` | Changing worklet channel handling or processor integration |
 | `src/lib/morse.mjs` | Changing Morse symbols, timings, Base32, CRC32, or packet validation |
 | `src/lib/audio-options.mjs` | Changing the bounded speed/tone presets offered in the UI |
-| `src/lib/security.mjs` | Changing shared-code validation, HKDF/AES-GCM, or encrypted framing |
-| `src/lib/transfer.mjs` | Changing direct/exact/secure preparation, message interpretation, or synthetic self-test |
+| `src/lib/security.mjs` | Changing alphabet validation, permutation generation, mapping swaps, or substitution |
+| `src/lib/transfer.mjs` | Changing direct/exact preparation with optional shuffle, message interpretation, or synthetic self-test |
 
 ## Checks
 
@@ -42,7 +42,7 @@ npm run check
 
 Tests use Node’s built-in test runner. Production verification runs that same harness against the emitted worklet, checking that bundling preserves its processing behavior. The isolated AudioWorklet harness runs in a subprocess with VM modules enabled so the processor executes without browser DOM globals. Synthetic audio tests feed actual samples through the same detector used by the microphone worklet.
 
-Coverage includes Unicode and arbitrary-byte round trips; direct text without a byte frame; incremental text reception; exact-mode corruption rejection; empty/oversize files; Base32 boundaries; CRC32; Morse timing; 10–80 WPM with modest generated noise/jitter; all tone presets through 4,000 Hz; higher-speed/tone combinations at 12/44.1/48 kHz sample rates; direct/exact/secure self-tests at 80 WPM; off-frequency rejection; self-test cancellation; worklet registration/silent output; encrypted Unicode/binary round trips; wrong codes; salt, nonce, and ciphertext tampering despite recomputed CRC32; malformed encrypted frames; plaintext downgrade rejection; and independent Web Crypto interoperability.
+Coverage includes Unicode and arbitrary-byte round trips; direct text without a byte frame; incremental text reception; exact-mode corruption rejection; empty/oversize files; Base32 boundaries; CRC32; Morse timing; 10–80 WPM with modest generated noise/jitter; all tone presets through 4,000 Hz; higher-speed/tone combinations at 12/44.1/48 kHz sample rates; direct/exact/shuffled self-tests at 80 WPM; off-frequency rejection; self-test cancellation; worklet registration/silent output; shuffled Unicode/binary recovery; alphabet validation; reversible mapping edits; unchanged wire character counts; and garbled direct text with a wrong alphabet.
 
 ## Browser verification
 
@@ -52,7 +52,7 @@ Use both the development server and the production preview after a build:
 npm run preview -- --port 4174
 ```
 
-First verify Secure transfer: generate a code, run the audio self-test, try unlocking with a different valid code, then restore the original code and unlock. Confirm locked packets have no plaintext/download, the success badge reads AUTHENTICATED, and Forget code clears the code/result while leaving security enabled. Then disable Secure transfer and check direct text → Text mode and exact Unicode → File / exact Unicode mode with the in-app self-test. Also check file selection, validation errors, keyboard tabs, playback start/stop, receiver cancellation, the field guide, and narrow-screen layout.
+First verify character shuffle: generate and copy an alphabet, edit `A → C`, and confirm the editor swaps another assignment to retain a permutation. Run both receiver-mode self-tests with shuffle on. Confirm direct text restores live without an unlock button, exact mode shows CHECKSUM OK, and Forget clears the code/result while leaving shuffle enabled. Invalid or missing alphabets must prevent shuffled transmission and reception. Switch shuffle off and check both modes again. Also check file selection, keyboard tabs, playback start/stop, receiver cancellation, the field guide, and narrow-screen layout.
 
 For temporary phone testing, use the [cloudflared HTTPS tunnel setup](getting-started.md#temporary-https-with-cloudflared) to serve the production preview. Rebuild after source edits; preview does not provide development hot reload.
 
@@ -64,9 +64,9 @@ Vite builds the worklet separately through a `?worker&url` import. Its output fo
 
 The detector module must stay free of DOM-dependent initialization. The worklet cannot import the codec module, which initializes text encoding utilities, or React.
 
-## Security implementation
+## Character shuffle implementation
 
-See [secure transfer](security.md) for the threat model and [MTE1](protocol.md#encrypted-frame-version-mte1) for exact wire semantics. Keep Web Crypto on the main thread; the worklet only detects audio. Do not log or persist codes, add algorithm negotiation from incoming packets, fall back to plaintext in secure mode, or release unauthenticated decrypted bytes. AES-GCM uses fresh random salt/nonce per preparation; playback retries reuse the prepared ciphertext without re-encrypting it. Changing this fixed suite requires a new version marker.
+See [character shuffle](security.md) for examples and limits and [wire semantics](protocol.md#character-shuffle). Keep the alphabet bijective, apply substitution only to prepared Morse-compatible text, and reverse it before interpreting receiver modes. Punctuation and spaces pass through unchanged. Generated alphabets use unbiased Fisher–Yates swaps with `crypto.getRandomValues`; randomness does not make fixed substitution strong encryption. Do not describe shuffle or CRC32 as authentication. Do not log or persist shared alphabets.
 
 ## Extending safely
 

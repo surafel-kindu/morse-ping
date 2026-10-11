@@ -23,21 +23,20 @@
 | File transfer takes minutes | Morse plus Base32/metadata has low throughput | Use a tiny file; use Direct text for ordinary messages |
 | Self-test passes but devices fail | Self-test bypasses speaker, microphone, and room acoustics | Follow the physical setup steps and test error rates at lower speed |
 
-## Secure transfer
+## Character shuffle
 
 | Symptom | What to do |
 | --- | --- |
-| Sending is disabled after opening the app | Secure transfer is on by default; generate or enter the shared code first |
-| Shared code is rejected | Use 32 characters from A–Z and 2–7; spaces, dashes, and case are ignored. Generate the code once and share it separately |
-| Packet is locked and Unlock is disabled | Stop listening and enter a correctly formatted code |
-| Wrong-code or altered-packet error | Check the code against the sender; correct it and unlock the existing packet again. If the signal was altered, resend |
-| Secure receiver shows no restored result | Both devices must enable Secure transfer; it rejects unencrypted transfers and incomplete packets |
-| Filename or original text is unavailable while receiving | Metadata and content are encrypted; they appear only after the full packet authenticates |
-| Secure transfer is slower than direct text | Encryption and encoding add overhead; use the displayed estimate and keep private transfers short |
-| A previously captured packet fails after generating a new code | Unlock it with the code used when that packet was prepared |
-| Reloading loses the code | Codes are intentionally kept only in page memory; re-enter the separately shared code |
+| Sending is disabled after opening the app | Shuffle is on by default; press Shuffle or enter the shared alphabet first, or switch it off on both devices |
+| Shared code is rejected | Include A–Z and 0–9 exactly once, with no duplicates or missing symbols; spaces, dashes, and case are ignored |
+| Text is garbled despite a clean signal | Confirm both devices use the identical alphabet and shuffle setting; wrong alphabets do not produce an authentication error |
+| Exact transfer never appears with shuffle on | Match alphabets and receiver mode, clear the signal, and resend the complete frame |
+| Changing A’s replacement changes another mapping | The editor swaps assignments so every replacement remains unique and reversible |
+| Audio duration changes after shuffling | Characters have different Morse lengths; substitution changes symbols, but adds no characters |
+| Reloading loses the code | Codes stay only in page memory; re-enter the separately shared alphabet |
+| A captured encrypted packet from an older version cannot be restored | This version uses character substitution and does not support the previous MTE1 encrypted format |
 
-See the [security guide](security.md) for the full workflow and protection limits.
+See the [character shuffle guide](security.md) for the workflow and limits. Direct text has no checksum; exact mode checks corruption but does not authenticate a sender.
 
 ## Cloudflare tunnel setup
 
@@ -65,5 +64,5 @@ The in-app browser’s permission handling can differ from Safari/Chrome. If its
 1. Expand **Live decoded signal**.
 2. If no dots/dashes appear, investigate permission, frequency, level, and threshold first.
 3. If dots appear but characters are wrong, check WPM, echoes, and interruptions.
-4. If characters are correct but no exact result appears, match receiver mode and ensure the complete frame was received.
+4. If characters are correct but no exact result appears, match receiver mode and shuffle alphabet, and ensure the complete frame was received.
 5. For an integrity error, resend from the beginning. CRC32 does not repair damaged data.

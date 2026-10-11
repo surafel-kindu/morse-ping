@@ -1,57 +1,47 @@
 import { MAX_BYTES, TimingDecoder, ToneDetector, normalizePlain, makePacket, readPacket, framesIn, timeline, toMorse } from './morse.mjs';
-import { encryptPacket, readEncryptedPacket, encryptedFramesIn, decryptPacket } from './security.mjs';
+import { shuffleCharacters, createShuffleMapping } from './security.mjs';
 const encoder = new TextEncoder();
 
-function prepared(wire, plain, bytes) {
+function prepared(source, plain, bytes, { shuffle = false, code = '' } = {}) {
+  const wire = shuffle ? shuffleCharacters(source, code) : source;
   const segments = timeline(wire);
-  return { wire, plain, bytes, segments, morse: toMorse(wire), units: segments.reduce((sum, segment) => sum + segment.units, 0), count: plain ? wire.length : bytes.length };
+  return { wire, plain, bytes, shuffled: shuffle, segments, morse: toMorse(wire), units: segments.reduce((sum, segment) => sum + segment.units, 0), count: plain ? wire.length : bytes.length };
 }
-export function prepareText(text, mode = 'plain') {
+export function prepareText(text, mode = 'plain', options = {}) {
   if (!text.length) throw new Error('Enter a message to prepare a transfer.');
-  if (mode === 'plain') return prepared(normalizePlain(text), true, null);
+  if (mode === 'plain') return prepared(normalizePlain(text), true, null, options);
   if (mode !== 'exact') throw new Error('Unknown transfer mode.');
   const bytes = encoder.encode(text);
-  return prepared(makePacket(bytes), false, bytes);
+  return prepared(makePacket(bytes), false, bytes, options);
 }
-export async function prepareSecureText(text, code) {
-  if (!text.length) throw new Error('Enter a message to prepare a transfer.');
-  const bytes = encoder.encode(text);
-  return { ...prepared(await encryptPacket(bytes, undefined, code), false, bytes), encrypted: true };
-}
-export async function prepareFile(file, mode = 'exact', code = '') {
+export async function prepareFile(file, options = {}) {
   if (!file) throw new Error('Choose a file to prepare a transfer.');
   if (file.size > MAX_BYTES) throw new Error('Choose a file up to 2 KB (2,048 bytes).');
   const bytes = new Uint8Array(await file.arrayBuffer());
   const metadata = { kind: 'file', name: file.name, type: file.type || 'application/octet-stream' };
-  if (mode === 'secure') return { ...prepared(await encryptPacket(bytes, metadata, code), false, bytes), encrypted: true };
-  if (mode !== 'exact') throw new Error('Unknown file transfer mode.');
-  return prepared(makePacket(bytes, metadata), false, bytes);
+  return prepared(makePacket(bytes, metadata), false, bytes, options);
 }
-export function createMessageDecoder({ wpm, mode, onSignal = () => {}, onResult = () => {}, onError = () => {} }) {
-  if (!['plain', 'exact', 'secure'].includes(mode)) throw new Error('Unknown receiver mode.');
+export function createMessageDecoder({ wpm, mode, shuffle = false, code = '', onSignal = () => {}, onResult = () => {}, onError = () => {} }) {
+  if (!['plain', 'exact'].includes(mode)) throw new Error('Unknown receiver mode.');
+  const mapping = shuffle ? createShuffleMapping(code).reverse : null;
   let result = null;
   const seen = new Set();
   const decoder = new TimingDecoder(wpm, (_character, characters, morse) => {
     onSignal({ characters, morse });
+    const restored = mapping ? [...characters].map(character => mapping[character] || character).join('') : characters;
     if (mode === 'plain') {
-      const text = characters.trimEnd();
+      const text = restored.trimEnd();
       // Bytes are created only for the downloadable .txt file. They are not
       // encoded into the sound in direct-text mode.
-      result = { kind: 'text', name: 'message.txt', type: 'text/plain', text, bytes: encoder.encode(text), verified: false };
+      result = { kind: 'text', name: 'message.txt', type: 'text/plain', text, bytes: encoder.encode(text), verified: false, shuffled: shuffle };
       onResult(result);
       return;
     }
-    for (const frame of (mode === 'secure' ? encryptedFramesIn(characters) : framesIn(characters))) {
+    for (const frame of framesIn(restored)) {
       if (seen.has(frame)) continue;
       seen.add(frame);
       if (seen.size > 20) seen.delete(seen.values().next().value);
-      try {
-        if (mode === 'secure') {
-          readEncryptedPacket(frame);
-          result = { encrypted: true, locked: true, frame };
-        } else result = { ...readPacket(frame), verified: true };
-        onResult(result);
-      }
+      try { result = { ...readPacket(frame), verified: true, shuffled: shuffle }; onResult(result); }
       catch (error) { onError(error); }
     }
   });
@@ -63,11 +53,12 @@ export function createMessageDecoder({ wpm, mode, onSignal = () => {}, onResult 
     getResult: () => result,
   };
 }
-export async function runAudioSelfTest({ wpm, frequency, threshold, mode, code, keepLocked = false, onSignal, onResult, onError, cancelled = () => false }) {
+export async function runAudioSelfTest({ wpm, frequency, threshold, mode, shuffle = false, code = '', onSignal, onResult, onError, cancelled = () => false }) {
   const expected = mode === 'plain' ? 'HELLO 123' : 'Hi 👋';
-  const wire = mode === 'secure' ? await encryptPacket(encoder.encode(expected), { name: '', type: '' }, code) : mode === 'plain' ? expected : makePacket(encoder.encode(expected), { name: '', type: '' });
+  const source = mode === 'plain' ? expected : makePacket(encoder.encode(expected), { name: '', type: '' });
+  const wire = shuffle ? shuffleCharacters(source, code) : source;
   const sampleRate = 12000, unit = 1.2 / wpm;
-  const decoder = createMessageDecoder({ wpm, mode, onSignal, onResult: mode === 'secure' ? undefined : onResult, onError });
+  const decoder = createMessageDecoder({ wpm, mode, shuffle, code, onSignal, onResult, onError });
   const detector = new ToneDetector(sampleRate, frequency, threshold, decoder.update);
   let offset = 0, segmentIndex = 0;
   for (const segment of [{ on: false, units: 8 }, ...timeline(wire), { on: false, units: 8 }]) {
@@ -81,12 +72,7 @@ export async function runAudioSelfTest({ wpm, frequency, threshold, mode, code, 
     if (++segmentIndex % 200 === 0) await new Promise(resolve => setTimeout(resolve, 0));
   }
   decoder.advance(offset / sampleRate + unit * 8);
-  let result = decoder.getResult();
-  if (mode === 'secure' && result?.locked) {
-    result = await decryptPacket(result.frame, code);
-    if (cancelled()) return null;
-    onResult?.(keepLocked ? decoder.getResult() : result);
-  }
+  const result = decoder.getResult();
   if (!result || result.text !== expected) throw new Error('Self-test failed to restore the generated message.');
   return result;
 }

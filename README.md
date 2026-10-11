@@ -6,9 +6,10 @@ Send letters directly as Morse beeps, or transfer a tiny file to another device 
 
 | Mode | Result | Protection |
 | --- | --- | --- |
-| **Secure transfer · default** | Exact text or file, unlocked with a shared code | AES-GCM encryption and authentication; original payload up to 2 KB |
-| Direct text | Live uppercase letters, numbers, supported punctuation | Unencrypted; no checksum |
-| File / exact Unicode | Original bytes, case, emoji, and formatting | Unencrypted; CRC32 detects corruption; maximum 2 KB |
+| Direct text | Live uppercase letters, numbers, supported punctuation | Optional character shuffle; no checksum |
+| File / exact Unicode | Original bytes, case, emoji, and formatting | Optional character shuffle; CRC32 detects corruption; maximum 2 KB |
+
+**Character shuffle is on by default.** Share a shuffled alphabet to replace characters one-for-one, such as `A → C`. It adds no extra frame and is basic obfuscation, with no authentication.
 
 <img width="1223" height="877" alt="Screenshot 2026-10-11 at 9 35 44 AM" src="https://github.com/user-attachments/assets/9fdcd391-8ead-4073-b0a1-8a74682fd161" />
 
@@ -58,14 +59,12 @@ See [phone setup and tunnel troubleshooting](docs/getting-started.md#temporary-h
 ## Your first transfer
 
 1. Open the app on both devices. Phones need HTTPS; use the Cloudflare tunnel above for testing.
-2. Leave **Secure transfer** enabled on both. Generate a code on one device and share it separately with the other. Enter the same code on both.
-3. Match **30 WPM** and **700 Hz**. Start listening on the receiver.
-4. Enter a short message or choose a tiny file on the sender and press **Play Morse sound**.
-5. When **Encrypted packet received** appears, stop listening and press **Unlock & authenticate**. Wait for **AUTHENTICATED** before downloading.
+2. Leave **Shuffle on** checked on both. Press **Shuffle** once, then copy that alphabet to the other device through a separate channel. You can edit individual mappings under **View or edit character mappings**.
+3. Choose matching modes: Direct text → Text, or Exact transfer / File → File / exact Unicode. Match **30 WPM** and **700 Hz**.
+4. Start listening on the receiver, enter a short message on the sender, and press **Play Morse sound**.
+5. Direct text appears live, already unshuffled. Exact transfers appear after **CHECKSUM OK**; then download the original. Stop listening when finished.
 
-Use **Forget code & clear result** when finished. Codes stay in this page’s memory and are cleared on reload. Read the [security guide](docs/security.md) for code sharing, what is encrypted, and protection limits.
-
-For a faster public message, turn Secure transfer off on both devices and choose Direct text → Text. Exact transfer → File / exact Unicode preserves original content with an unencrypted checksum.
+Use **Forget** to clear the alphabet and received result. Codes stay in page memory and are cleared on reload. Read the [character shuffle guide](docs/security.md) for examples and limits. To send ordinary Morse, turn shuffle off on both devices.
 
 The app’s **Read the guide** link opens a built-in field guide with mode selection, setup steps, and troubleshooting.
 
@@ -74,7 +73,7 @@ The app’s **Read the guide** link opens a built-in field guide with mode selec
 | Guide | What it covers |
 | --- | --- |
 | [Getting started](docs/getting-started.md) | Installation, scripts, all modes, two-device setup, Cloudflare tunnels, HTTPS deployment |
-| [Security](docs/security.md) | Shared codes, encrypted transfers, authentication, threat model, protection limits |
+| [Security](docs/security.md) | Shared alphabets, editable mappings, substitution examples, protection limits |
 | [Architecture](docs/architecture.md) | React components, hooks, audio sessions, data flow, resource cleanup |
 | [Transfer protocol](docs/protocol.md) | Morse timing, Base32 framing, metadata, checksum, decoder rules |
 | [Troubleshooting](docs/troubleshooting.md) | Microphone access, noise, missed tones, mode mismatch, slow transfers |
@@ -102,7 +101,7 @@ src/
   hooks/                       Transfer preparation and audio lifecycle
   lib/morse.mjs                Alphabet, timing, Base32, CRC32, packet parser
   lib/transfer.mjs             Preparation, receiver modes, synthetic self-test
-  lib/security.mjs             Shared codes, HKDF, AES-GCM, encrypted frames
+  lib/security.mjs             Shared alphabet validation, generation, reversible substitution
   audio/sessions.mjs           Playback and microphone resource ownership
   audio/tone-detector.mjs      Shared signal detector
   audio/receiver-worklet.mjs   Microphone processing off the UI thread
@@ -117,13 +116,13 @@ vite.config.mjs                React build and ES-module worklet bundling
 
 At 30 WPM, plain `HELLO WORLD` takes about **4.7 seconds**. A representative 1 KiB exact file takes about **14 minutes**, including framing; duration varies with its contents and metadata. These are calculated transmission times, not measured acoustic throughput. The app shows the duration for your input.
 
-Speed presets now cover **10–80 WPM** (10, 20, 30, 40, 50, 60, 70, 80). Tone presets cover **550–4,000 Hz** (550, 700, 900, 1,200, 1,500, 2,000, 3,000, 4,000). Start at 20–30 WPM and 700 Hz. Speeds of 50 WPM or higher and tones above 900 Hz are experimental. See [trying higher speeds and tones](docs/getting-started.md#try-higher-speeds-and-tones). Exact and secure original payloads are capped at 2,048 bytes. Sender and receiver must agree on mode, speed, and tone. Room noise, echo, clipping, browser audio processing, and background suspension affect reception.
+Speed presets now cover **10–80 WPM** (10, 20, 30, 40, 50, 60, 70, 80). Tone presets cover **550–4,000 Hz** (550, 700, 900, 1,200, 1,500, 2,000, 3,000, 4,000). Start at 20–30 WPM and 700 Hz. Speeds of 50 WPM or higher and tones above 900 Hz are experimental. See [trying higher speeds and tones](docs/getting-started.md#try-higher-speeds-and-tones). Exact original payloads are capped at 2,048 bytes. Sender and receiver must agree on mode, speed, tone, shuffle setting, and alphabet. Room noise, echo, clipping, browser audio processing, and background suspension affect reception.
 
-CRC32 detects accidental corruption; it does not correct errors or authenticate a sender. Secure transfer adds AES-GCM encryption and authentication; Direct text and Exact transfer remain unencrypted. Encryption adds transmission overhead, included in the displayed estimate. There is no acknowledgement, chunking, automatic retry, or resume. Resend a failed exact transfer from the beginning.
+CRC32 detects accidental corruption; it does not correct errors or authenticate a sender. Character shuffle is a simple substitution cipher and exposes repeated-letter patterns. It adds no characters, although different Morse symbols can change duration; the estimate includes this. It provides no authentication or dependable confidentiality. There is no acknowledgement, chunking, automatic retry, or resume. Resend a failed exact transfer from the beginning.
 
 ## Validation
 
-Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, boundaries, corruption, sampled audio at 10–80 WPM with modest noise and jitter, combined higher-speed/tone checks at 12/44.1/48 kHz sample rates, worklet processing without DOM globals, encrypted round trips, wrong codes, tampering with recomputed checksums, and Web Crypto interoperability. The browser self-test uses generated audio through the same detector and decoder. It does not exercise a physical speaker/microphone pair. Real two-device acoustic reception remains a device-specific test.
+Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, boundaries, corruption, sampled audio at 10–80 WPM with modest noise and jitter, combined higher-speed/tone checks at 12/44.1/48 kHz sample rates, worklet processing without DOM globals, shuffle round trips, alphabet validation, editable mapping swaps, live shuffled text, wrong-alphabet behavior, and shuffled file recovery. The browser self-test uses generated audio through the same detector and decoder. It does not exercise a physical speaker/microphone pair. Real two-device acoustic reception remains a device-specific test.
 
 ## References
 

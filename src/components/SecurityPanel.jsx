@@ -1,31 +1,28 @@
 import { useState } from 'react';
-import { generateSecret, normalizeSecret } from '../lib/security.mjs';
+import { SHUFFLE_ALPHABET, createShuffleMapping, generateShuffleCode, swapShuffleMapping } from '../lib/security.mjs';
 
 export default function SecurityPanel({ enabled, code, disabled, onToggle, onCodeChange, onForget }) {
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
-  let valid = false;
-  try { normalizeSecret(code); valid = true; } catch { /* An incomplete input is expected while typing. */ }
+  let mapping = null;
+  try { mapping = createShuffleMapping(code); } catch { /* An incomplete alphabet is expected while typing. */ }
+  function change(value) { onCodeChange(value); setError(''); setCopied(false); }
   function generate() {
-    try { onCodeChange(generateSecret()); setVisible(true); setError(''); setCopied(false); }
+    try { change(generateShuffleCode()); setVisible(true); }
     catch (cause) { setError(cause.message); }
   }
   async function copy() {
-    try { await navigator.clipboard.writeText(code); setCopied(true); setError(''); }
-    catch { setError('Copy is unavailable here. Show the code and select it to copy manually.'); }
+    try { await navigator.clipboard.writeText(mapping.alphabet); setCopied(true); setError(''); }
+    catch { setError('Copy is unavailable. Show the alphabet and copy it manually.'); }
   }
-  return <section className={`security-panel ${enabled ? 'enabled' : ''}`} aria-labelledby="security-heading">
-    <div className="security-header"><div><p className="eyebrow">THE SHARED KEY</p><h2 id="security-heading">A secret between devices.</h2></div><label className="security-switch"><input id="secure-mode" type="checkbox" checked={enabled} disabled={disabled} onChange={event => onToggle(event.target.checked)} /> Secure transfer</label></div>
-    <p className="helper">{enabled ? 'Encrypted text and files. Enable Secure transfer on both devices and enter the same shared code.' : 'Enable encryption before sending something private. Direct and exact modes send readable content.'}</p>
-    {enabled && <div className="security-controls">
-      <label className="field-label" htmlFor="shared-code">Shared code <span>{valid ? '32 characters · ready' : 'Generate once, share separately'}</span></label>
-      <div className="secret-input"><input id="shared-code" type={visible ? 'text' : 'password'} value={code} maxLength={128} disabled={disabled} autoComplete="off" autoCapitalize="characters" spellCheck={false} aria-describedby="secret-help" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" onChange={event => { onCodeChange(event.target.value); setError(''); setCopied(false); }} /><button className="secondary" disabled={disabled} onClick={() => setVisible(value => !value)}>{visible ? 'Hide' : 'Show'}</button></div>
-      <div className="secret-actions"><button id="generate-code" className="secondary" disabled={disabled} onClick={generate}>↻ Generate code</button><button id="copy-code" className="secondary" disabled={disabled || !valid} onClick={copy}>{copied ? 'Copied' : 'Copy code'}</button><button id="forget-code" className="text-button" disabled={disabled || !code} onClick={() => { onForget(); setVisible(false); setError(''); setCopied(false); }}>Forget code &amp; clear result</button></div>
-      <p className="helper" id="secret-help">Generate on one device, then enter it on the other. Spaces, dashes, and letter case are ignored. Share in person or through a trusted channel. The code stays in this page’s memory; reloading clears it.</p>
-      <div className="cipher-strip" aria-label="Security features"><span>RANDOM SHARED CODE</span><b>→</b><span>ENCRYPTED CHARACTERS</span><b>→</b><span>MORSE SOUND</span></div>
-      <p className="helper">Every prepared packet uses fresh randomness. Text, filenames, and file types remain locked until authentication succeeds. Keep the code private; anyone holding it can unlock or create a transfer.</p>
+  return <section className="shuffle-panel" aria-labelledby="security-heading">
+    <div className="shuffle-heading"><h2 id="security-heading">Character shuffle</h2><label className="security-switch"><input id="shuffle-mode" type="checkbox" checked={enabled} disabled={disabled} onChange={event => onToggle(event.target.checked)} /> Shuffle on</label></div>
+    {enabled ? <>
+      <div className="shuffle-controls"><label className="field-label" htmlFor="shared-code">Shared alphabet</label><div className="secret-input"><input id="shared-code" type={visible ? 'text' : 'password'} value={code} maxLength={128} disabled={disabled} autoComplete="off" autoCapitalize="characters" spellCheck={false} aria-describedby="secret-help" placeholder="A–Z and 0–9 in any order" onChange={event => change(event.target.value)} /><button className="secondary" disabled={disabled} onClick={() => setVisible(value => !value)}>{visible ? 'Hide' : 'Show'}</button></div><div className="shuffle-actions"><button id="generate-code" className="secondary" disabled={disabled} onClick={generate}>Shuffle</button><button id="copy-code" className="secondary" disabled={disabled || !mapping} onClick={copy}>{copied ? 'Copied' : 'Copy'}</button><button id="forget-code" className="text-button" disabled={disabled || !code} onClick={() => { onForget(); setVisible(false); setError(''); setCopied(false); }}>Forget</button></div></div>
+      <p className="helper" id="secret-help">{mapping ? `A → ${mapping.forward.A} · B → ${mapping.forward.B} · C → ${mapping.forward.C}. ` : 'Generate a shuffle, then share it with the other device. '}Use the same alphabet on both devices. Basic obfuscation; no authentication.</p>
+      {mapping && <details className="shuffle-editor"><summary>View or edit character mappings <span>↙</span></summary><p className="helper">Changing a mapping swaps two assignments so every character stays reversible. Copy the updated alphabet to the other device.</p><div className="mapping-grid">{[...SHUFFLE_ALPHABET].map(source => <label key={source}>{source} → <select aria-label={`Replace ${source} with`} value={mapping.forward[source]} disabled={disabled} onChange={event => change(swapShuffleMapping(code, source, event.target.value))}>{[...SHUFFLE_ALPHABET].map(character => <option key={character} value={character}>{character}</option>)}</select></label>)}</div></details>}
       {error && <p className="status error" role="alert">{error}</p>}
-    </div>}
+    </> : <p className="helper">Characters go straight to Morse. Enable the shuffle on both devices for simple substitution.</p>}
   </section>;
 }

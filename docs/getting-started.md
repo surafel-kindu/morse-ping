@@ -23,29 +23,27 @@ If an older copy of Morse Transfer is already running, stop its terminal process
 
 ## Choose matching modes
 
-**Secure transfer is enabled by default.** Generate a shared code on one device, share it separately, and enter it on the other. See the [security guide](security.md). Turn Secure transfer off on both to use Direct text or unencrypted Exact transfer.
+**Character shuffle is enabled by default.** Generate an alphabet with **Shuffle** on one device, share it separately, and enter it on the other. It is basic obfuscation with no authentication. See the [character shuffle guide](security.md). To use ordinary Morse, switch shuffle off on both devices.
 
 | Sender | Receiver “Listen as” | Use it for |
 | --- | --- | --- |
-| Secure transfer enabled · text or file | Secure transfer enabled | Encrypted original content, unlocked with the shared code |
 | Text → Direct text | Text · letters & numbers | Ordinary messages using A–Z, 0–9, and supported punctuation |
 | Text → Exact transfer | File / exact Unicode text | Emoji, Ethiopic text, mixed case, newlines, exact formatting |
 | File | File / exact Unicode text | Any file type up to 2,048 bytes |
 
-Direct text goes straight to Morse. The app does not wrap it in a binary frame. Received text is uppercase and repeated whitespace becomes one space. Unsupported characters produce an error before playback. A downloadable direct-text result is saved as a UTF-8 `.txt` file; this encoding is for the download, not for the Morse transmission.
+Direct text optionally substitutes letters and digits, then goes straight to Morse. The app does not wrap it in a binary frame. Received text is uppercase and repeated whitespace becomes one space. Unsupported characters produce an error before playback. A downloadable direct-text result is saved as a UTF-8 `.txt` file; this encoding is for the download, not for the Morse transmission.
 
-Exact mode encodes the original bytes into Morse-compatible Base32 characters. Metadata and a checksum let the receiver reconstruct the original content. Files use secure mode when Secure transfer is enabled, or unencrypted exact mode when it is off. Switching back to Text preserves your previous text encoding choice.
+Exact mode encodes the original bytes into Morse-compatible Base32 characters. Metadata and a checksum let the receiver reconstruct the original content. Files always use exact mode. When shuffle is enabled, the same shared alphabet replaces characters in the frame; the receiver reverses it before checking the original bytes. Switching back to Text preserves your previous text encoding choice.
 
 ## Speaker-to-microphone workflow
 
 1. Put the devices near each other in a quiet room. Use moderate speaker volume to avoid clipping.
-2. Set both to the same mode, frequency, and WPM. Try 700 Hz and 30 WPM first.
+2. Set both to the same mode, frequency, WPM, shuffle setting, and alphabet. Try 700 Hz and 30 WPM first.
 3. On the receiver, press **Start listening**, allow microphone access, and leave the page active.
 4. On the sender, enter text or choose a tiny file. Check the transmission estimate.
 5. Press **Play Morse sound**. Direct text appears incrementally in the received result; live Morse and decoded characters are available in the expandable signal section.
 6. For exact mode, wait for **CHECKSUM OK**, then use **Download original**. An incomplete or corrupt frame is not accepted as an original file.
-7. For secure mode, wait for **Encrypted packet received**, press **Stop**, then **Unlock & authenticate**. Only an **AUTHENTICATED** result can be downloaded.
-8. Press **Stop** to release the microphone when finished; use **Forget code & clear result** after secure transfers.
+7. Press **Stop** to release the microphone when finished; use **Forget** to clear the code and received result. Shuffled text is reversed live without an unlock step.
 
 Playback, listening, and the synthetic self-test are mutually exclusive on a single app instance. Stop the active action before changing audio settings or receiver mode. Cancelling a pending microphone request prevents a subsequently granted stream from staying active.
 
@@ -56,23 +54,23 @@ Playback, listening, and the synthetic self-test are mutually exclusive on a sin
 | Speed | 10, 20, 30, 40, 50, **60, 70, 80 WPM** |
 | Tone | 550, 700, 900, **1,200, 1,500, 2,000, 3,000, 4,000 Hz** |
 
-The default remains 30 WPM / 700 Hz. Speeds of 50 WPM or higher and tones above 900 Hz are marked experimental. Match both settings on the sender and receiver, including when using Secure transfer.
+The default remains 30 WPM / 700 Hz. Speeds of 50 WPM or higher and tones above 900 Hz are marked experimental. Match both settings on the sender and receiver, including when using character shuffle.
 
 1. Establish a successful short transfer at the default settings.
 2. Try 60 WPM, then 70 and 80, keeping the tone unchanged. Change one setting at a time so you can identify what affects reception.
 3. Try a higher tone such as 1,200 or 1,500 Hz. Test other presets with the same short message before attempting a file.
-4. Run the audio self-test at each setting. In secure mode, unlock the generated test packet to check authentication.
+4. Run the audio self-test at each setting. With shuffle enabled, confirm the restored text matches the original.
 5. Repeat on the actual speaker/microphone pair. If text is wrong or a packet fails its checksum, lower the speed or return to a tone that worked.
 
 WPM controls transmission duration: 80 WPM is 1.6 times as fast as 50 WPM for the same prepared packet. A dot lasts 15 ms at 80 WPM, compared with 24 ms at 50. Increasing Hz changes the pitch, not the Morse timing or amount of data sent per second. A higher tone may suit a particular speaker/microphone, but is not automatically more reliable.
 
-Synthetic tests restore packets at all offered higher-speed/tone combinations with modest generated noise and timing jitter, at 12,000, 44,100, and 48,000 samples per second. Direct, exact, and secure self-tests also pass at 80 WPM across all tones. These checks bypass real room acoustics, device filtering, clipping, and echo.
+Synthetic tests restore packets at all offered higher-speed/tone combinations with modest generated noise and timing jitter, at 12,000, 44,100, and 48,000 samples per second. Direct, exact, and shuffled self-tests also pass at 80 WPM across all tones. These checks bypass real room acoustics, device filtering, clipping, and echo.
 
 The current detector lost packets in synthetic probes at 100–120 WPM, so the interface stops at 80 WPM. Its five-millisecond analysis windows and two-window confirmation leave less timing margin as dots get shorter. Faster presets would require further receiver tuning and testing.
 
 ## Local self-test
 
-Choose a receiver mode and press **Run audio self-test**. Text mode restores `HELLO 123`; exact mode restores `Hi 👋` with a valid checksum. Secure mode needs a shared code and leaves an encrypted test packet locked; press **Unlock & authenticate** to restore `Hi 👋`. The signal is synthesized and decoded in memory. This checks application logic without requesting microphone access or playing sound.
+Choose a receiver mode and press **Run audio self-test**. Text mode restores `HELLO 123`; exact mode restores `Hi 👋` with a valid checksum. With shuffle enabled, enter a valid alphabet first; the test checks substitution and its reversal. The signal is synthesized and decoded in memory. This checks application logic without requesting microphone access or playing sound.
 
 ## Build and use on phones
 
@@ -127,4 +125,4 @@ After source changes, stop the preview, run `npm run build`, restart the preview
 
 ## Privacy
 
-Selected files, decoded content, and microphone samples stay in the browser. No analytics or upload endpoint is built in. The acoustic transmission itself is audible to nearby devices and people. Secure mode encrypts its content; Direct text and unencrypted Exact mode do not. Shared codes stay in page memory; see [security and privacy limits](security.md#protection-and-limits). Stopping reception or leaving the page releases audio resources. Host/server access logging, if any, is controlled by your chosen hosting provider.
+Selected files, decoded content, and microphone samples stay in the browser. No analytics or upload endpoint is built in. The acoustic transmission itself is audible to nearby devices and people. Character shuffle obscures letters with a fixed substitution; it is not strong encryption or authentication. Shared codes stay in page memory; see [security and privacy limits](security.md#protection-and-limits). Stopping reception or leaving the page releases audio resources. Host/server access logging, if any, is controlled by your chosen hosting provider.
