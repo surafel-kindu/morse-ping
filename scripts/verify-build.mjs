@@ -10,4 +10,8 @@ const html = await readFile(new URL('../dist/index.html', import.meta.url), 'utf
 assert.ok(!html.includes('/src/main.jsx'), 'Production HTML must use built assets');
 const result = spawnSync(process.execPath, ['--experimental-vm-modules', fileURLToPath(new URL('../tests/worklet-harness.mjs', import.meta.url)), fileURLToPath(new URL(worklets[0], assets))], { encoding: 'utf8' });
 assert.equal(result.status, 0, result.stderr);
-console.log('Production HTML and bundled AudioWorklet verified.');
+const qrWorkers = files.filter(name => /^qr-scanner-worker\.min-.*\.js$/.test(name));
+assert.equal(qrWorkers.length, 1, 'Expected the bundled QR scanner fallback worker');
+const main = files.find(name => /^index-.*\.js$/.test(name));
+assert.ok((await readFile(new URL(main, assets), 'utf8')).includes(qrWorkers[0]), 'The app must reference the bundled QR fallback worker');
+console.log('Production HTML, AudioWorklet, and QR scanner worker assets verified.');

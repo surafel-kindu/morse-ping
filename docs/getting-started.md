@@ -21,7 +21,11 @@ npm run dev -- --port 5174
 
 If an older copy of Morse Transfer is already running, stop its terminal process first. Refreshing the old vanilla server is not enough to load React.
 
-## Choose matching modes
+## Choose a transfer method
+
+The top controls select **Morse sound** or **Camera & QR**. Morse uses audio; QR uses the screen and camera, supports exact text/files up to 1 MB, and automatically collects missed chunks across loops. See the [QR transfer guide](qr-transfer.md). The modes below apply to Morse.
+
+## Choose matching Morse modes
 
 **Character shuffle is enabled by default.** Generate an alphabet with **Shuffle** on one device, share it separately, and enter it on the other. It is basic obfuscation with no authentication. See the [character shuffle guide](security.md). To use ordinary Morse, switch shuffle off on both devices.
 
@@ -125,4 +129,4 @@ After source changes, stop the preview, run `npm run build`, restart the preview
 
 ## Privacy
 
-Selected files, decoded content, and microphone samples stay in the browser. No analytics or upload endpoint is built in. The acoustic transmission itself is audible to nearby devices and people. Character shuffle obscures letters with a fixed substitution; it is not strong encryption or authentication. Shared codes stay in page memory; see [security and privacy limits](security.md#protection-and-limits). Stopping reception or leaving the page releases audio resources. Host/server access logging, if any, is controlled by your chosen hosting provider.
+Selected files, decoded content, microphone samples, and camera frames stay in the browser. No analytics or upload endpoint is built in. The acoustic transmission itself is audible to nearby devices and people. Character shuffle obscures letters with a fixed substitution; it is not strong encryption or authentication. Shared codes stay in page memory; see [security and privacy limits](security.md#protection-and-limits). Stopping reception or leaving the page releases audio resources. Host/server access logging, if any, is controlled by your chosen hosting provider.

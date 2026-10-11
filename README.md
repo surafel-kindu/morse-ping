@@ -1,13 +1,14 @@
 # Morse Transfer
 
-**Messages through sound. Built with React and Vite.**
+**Messages through sound and light. Built with React and Vite.**
 
-Send letters directly as Morse beeps, or transfer a tiny file to another device using its microphone. Processing stays in the browser; the app has no account system, upload endpoint, or application backend.
+Send letters as Morse beeps through a microphone, or transfer text/files using a looping QR display and a camera. Processing stays in the browser; the app has no account system, upload endpoint, or application backend.
 
 | Mode | Result | Protection |
 | --- | --- | --- |
 | Direct text | Live uppercase letters, numbers, supported punctuation | Optional character shuffle; no checksum |
-| File / exact Unicode | Original bytes, case, emoji, and formatting | Optional character shuffle; CRC32 detects corruption; maximum 2 KB |
+| File / exact Unicode · Morse | Original bytes, case, emoji, and formatting | Optional character shuffle; CRC32 detects corruption; maximum 2 KB |
+| **Camera & QR** | Exact text or any file type, collected across looping QR frames | Chunk CRC32 + full SHA-256; optional payload shuffle; maximum 1 MB |
 
 **Character shuffle is on by default.** Share a shuffled alphabet to replace characters one-for-one, such as `A → C`. It adds no extra frame and is basic obfuscation, with no authentication.
 
@@ -56,7 +57,15 @@ Open the printed **`https://…trycloudflare.com`** URL in Safari or Chrome on y
 
 See [phone setup and tunnel troubleshooting](docs/getting-started.md#temporary-https-with-cloudflared) for other platforms, port changes, and rebuilding after edits.
 
-## Your first transfer
+## Transfer with Camera & QR
+
+Choose **Camera & QR** on both devices. Match shuffle settings and the shared alphabet, or turn shuffle off on both. Enter text or choose a file up to **1 MB**. Start the receiver’s camera, point it at the sender’s screen, and press **Start QR loop** on the sender.
+
+Data codes appear at **4 per second** by default; choose **1, 2, 4, 5, 8, 10, 15, or 20** (8+ experimental). Use the **240–960 px** size slider and **Large view** to enlarge the code. You can change size and speed while it loops. START and END markers remain visible for one second each. The receiver shows total size, unique bytes/chunks received, and percentage. Missed chunks arrive on later loops; duplicates never inflate progress. Completion requires both markers, every chunk, and a valid full checksum. The camera then releases automatically and **Download original** becomes available. Stop/resume keeps progress in page memory; clear to switch transfers.
+
+Phones need HTTPS for camera access too; use the cloudflared commands above. Read the [QR transfer guide](docs/qr-transfer.md) for frame details, speed estimates, recovery, and camera troubleshooting.
+
+## Your first Morse transfer
 
 1. Open the app on both devices. Phones need HTTPS; use the Cloudflare tunnel above for testing.
 2. Leave **Shuffle on** checked on both. Press **Shuffle** once, then copy that alphabet to the other device through a separate channel. You can edit individual mappings under **View or edit character mappings**.
@@ -73,6 +82,7 @@ The app’s **Read the guide** link opens a built-in field guide with mode selec
 | Guide | What it covers |
 | --- | --- |
 | [Getting started](docs/getting-started.md) | Installation, scripts, all modes, two-device setup, Cloudflare tunnels, HTTPS deployment |
+| [Camera & QR](docs/qr-transfer.md) | Looping codes, camera setup, byte/chunk progress, recovery, limits |
 | [Security](docs/security.md) | Shared alphabets, editable mappings, substitution examples, protection limits |
 | [Architecture](docs/architecture.md) | React components, hooks, audio sessions, data flow, resource cleanup |
 | [Transfer protocol](docs/protocol.md) | Morse timing, Base32 framing, metadata, checksum, decoder rules |
@@ -85,10 +95,10 @@ The app’s **Read the guide** link opens a built-in field guide with mode selec
 | --- | --- |
 | `npm ci` | Install dependencies from the lockfile |
 | `npm run dev` / `npm start` | Run React with Vite and hot reload |
-| `npm test` | Run protocol, sampled-audio, receiver-mode, and worklet integration tests |
+| `npm test` | Run Morse/QR protocols, generated QR image, sampled-audio, and worklet tests |
 | `npm run build` | Create a production static site in `dist/` |
 | `npm run preview` | Preview the production build locally |
-| `npm run verify:build` | Verify production HTML and the bundled AudioWorklet |
+| `npm run verify:build` | Verify production HTML, AudioWorklet, and QR scanner worker |
 | `npm run check` | Run tests, build, and verify production assets |
 
 ## Project layout
@@ -102,6 +112,7 @@ src/
   lib/morse.mjs                Alphabet, timing, Base32, CRC32, packet parser
   lib/transfer.mjs             Preparation, receiver modes, synthetic self-test
   lib/security.mjs             Shared alphabet validation, generation, reversible substitution
+  lib/qr-transfer.mjs          QR manifests, chunks, progress, and integrity checks
   audio/sessions.mjs           Playback and microphone resource ownership
   audio/tone-detector.mjs      Shared signal detector
   audio/receiver-worklet.mjs   Microphone processing off the UI thread
@@ -122,7 +133,7 @@ CRC32 detects accidental corruption; it does not correct errors or authenticate 
 
 ## Validation
 
-Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, boundaries, corruption, sampled audio at 10–80 WPM with modest noise and jitter, combined higher-speed/tone checks at 12/44.1/48 kHz sample rates, worklet processing without DOM globals, shuffle round trips, alphabet validation, editable mapping swaps, live shuffled text, wrong-alphabet behavior, and shuffled file recovery. The browser self-test uses generated audio through the same detector and decoder. It does not exercise a physical speaker/microphone pair. Real two-device acoustic reception remains a device-specific test.
+Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, boundaries, corruption, sampled audio at 10–80 WPM with modest noise and jitter, combined higher-speed/tone checks at 12/44.1/48 kHz sample rates, worklet processing without DOM globals, shuffle round trips, alphabet validation, editable mapping swaps, live shuffled text, wrong-alphabet behavior, and shuffled file recovery. QR tests cover missed/duplicate/out-of-order chunks, wrong alphabets, corruption/retry, metadata integrity, the 1 MB boundary, and generated QR pixel decoding. The browser QR self-test reads generated images and recovers a missed frame across loops. Physical camera performance remains device-specific. The Morse browser self-test uses generated audio through the same detector and decoder. It does not exercise a physical speaker/microphone pair. Real two-device acoustic reception remains a device-specific test.
 
 ## References
 
@@ -130,6 +141,8 @@ Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, b
 - [Vite setup and Node requirements](https://vite.dev/guide/)
 - [International Morse timing](https://morsecode.world/international/timing/)
 - [Microphone secure contexts and permission](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
+- [QR generation library](https://github.com/soldair/node-qrcode)
+- [Camera QR scanner](https://github.com/nimiq/qr-scanner)
 - [AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet)
 - [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)
 

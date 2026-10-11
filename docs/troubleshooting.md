@@ -23,6 +23,10 @@
 | File transfer takes minutes | Morse plus Base32/metadata has low throughput | Use a tiny file; use Direct text for ordinary messages |
 | Self-test passes but devices fail | Self-test bypasses speaker, microphone, and room acoustics | Follow the physical setup steps and test error rates at lower speed |
 
+## Camera & QR
+
+See [QR setup and troubleshooting](qr-transfer.md#troubleshooting) for camera permissions, stalled progress, missed markers, wrong alphabets, and stopping/resuming scans. The cloudflared HTTPS address works for the camera as well as the microphone.
+
 ## Character shuffle
 
 | Symptom | What to do |

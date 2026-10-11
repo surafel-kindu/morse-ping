@@ -29,6 +29,10 @@ The substitution is one character for one character. Direct messages have no sec
 
 Exact mode first creates the ordinary MT1 frame for Unicode text or a file up to 2,048 bytes, then substitutes its letters and digits. The receiver reverses substitution before parsing metadata and checking CRC32. Unicode and binary bytes are preserved by exact mode; they are not directly substituted as arbitrary Unicode characters. See [wire details](protocol.md#character-shuffle).
 
+## QR payload shuffle
+
+Camera & QR mode uses the same alphabet to substitute Base32 payload characters. QR metadata, IDs, sizes, hashes, chunk numbers, and START/END markers remain readable. The receiver reverses payload substitution before CRC32 and SHA-256 checks. Match settings and alphabet on both devices. QR supports up to 1 MB; see the [QR guide](qr-transfer.md).
+
 ## Protection and limits
 
 This is a fixed substitution cipher for basic obfuscation. Repeated letters remain repeated, spaces and punctuation remain visible, and an observer can recover mappings from patterns or known messages. It is not strong encryption and does not authenticate a sender. The previous AES-GCM packet mode has been replaced by this smaller shuffle; old encrypted MTE1 packets are not supported.

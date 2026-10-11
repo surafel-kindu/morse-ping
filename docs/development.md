@@ -28,6 +28,10 @@ There are no runtime calls to a backend, CDN fonts, or an external Morse service
 | `src/lib/morse.mjs` | Changing Morse symbols, timings, Base32, CRC32, or packet validation |
 | `src/lib/audio-options.mjs` | Changing the bounded speed/tone presets offered in the UI |
 | `src/lib/security.mjs` | Changing alphabet validation, permutation generation, mapping swaps, or substitution |
+| `src/lib/qr-transfer.mjs` | Changing QR manifests, chunks, deduplication, SHA-256, or size limits |
+| `src/hooks/usePreparedQr.js` | Changing QR input preparation and stale file reads |
+| `src/hooks/useQrPlayback.js` | Changing QR canvas rendering, rates, loop timing, or pause behavior |
+| `src/hooks/useQrReceiver.js` | Changing camera resources, collector lifecycle, or QR image self-test |
 | `src/lib/transfer.mjs` | Changing direct/exact preparation with optional shuffle, message interpretation, or synthetic self-test |
 
 ## Checks
@@ -57,6 +61,14 @@ First verify character shuffle: generate and copy an alphabet, edit `A → C`, a
 For temporary phone testing, use the [cloudflared HTTPS tunnel setup](getting-started.md#temporary-https-with-cloudflared) to serve the production preview. Rebuild after source edits; preview does not provide development hot reload.
 
 For physical testing, open an HTTPS build on two devices, start reception first, and use tiny test messages. Record device/browser names, WPM, frequency, distance, threshold, and the success/error rate. For higher settings, follow [higher-speed/tone testing](getting-started.md#try-higher-speeds-and-tones) and include 60, 70, and 80 WPM with tones above 900 Hz. The isolated worklet harness tests 80 WPM at 700 and 4,000 Hz, including the emitted production bundle. Synthetic checks should never be reported as measured speaker-to-microphone reliability.
+
+## QR verification
+
+`tests/qr-transfer.test.mjs` covers Unicode and byte recovery, empty files and the 1 MB boundary, shuffled payloads, missed/out-of-order/duplicate frames, mixed transfer IDs, per-chunk and complete corruption, metadata integrity, retry, reset/cancel during verification, and bounded validation. Generated QR pixel images are independently decoded with `jsqr` before reassembly.
+
+In the browser, select Camera & QR, enter a valid alphabet or disable shuffle, and run the QR image self-test. It uses `qrcode` and the production `qr-scanner` engine to recover a missed chunk on a second pass without camera permission. Check live 4–20 fps changes without resetting the loop, one-second marker holds, the 240–960 px size slider, Large view, Escape/keyboard focus, pause/resume, original download, invalid input, and phone layout. A physical camera test still needs two devices; record device/browser, fps, screen size/brightness, distance, glare, and completion time.
+
+Production verification requires the emitted QR scanner worker and its reference in the main bundle. Deploy the whole `dist/` tree. The image self-test exercises the actual scanner engine in the browser; do not replace it with passing frame strings directly to the collector.
 
 ## Production worklet
 

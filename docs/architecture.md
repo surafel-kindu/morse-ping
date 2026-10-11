@@ -24,11 +24,12 @@ flowchart LR
 
 | Component | Responsibility |
 | --- | --- |
-| `App.jsx` | Owns text/file selection, encoding mode, shared settings, receiver mode, guide visibility, shuffle toggle, and an in-memory shared code |
+| `App.jsx` | Owns text/file selection, encoding mode, shared settings, receiver mode, transfer method, QR busy state, guide visibility, shuffle toggle, and an in-memory shared code |
 | `SecurityPanel.jsx` | Shuffle toggle, alphabet generation/copy/reveal/forget, and reversible mapping editor |
 | `Sender.jsx` | Inputs, preparation status, duration, playback controls, and Morse preview |
 | `Receiver.jsx` | Mode choice, microphone controls, signal level, result, download, and self-test |
 | `Shared.jsx` | Accessible shared settings, card titles, and status messages |
+| `QrTransfer.jsx` | QR input, display, camera preview, loop speed, progress, and verified download |
 | `QuickGuide.jsx` | User-facing instructions embedded in the page |
 
 Form controls are controlled React inputs. Text/file tabs support arrow, Home, and End keys. Status messages use polite live regions. Results render as text, so incoming filenames and content are not injected as HTML.
@@ -72,3 +73,15 @@ The isolated worklet test uses only audio-worklet-style globals. Production vali
 ## Substitution boundary
 
 `security.mjs` validates a bijective 36-character alphabet, generates random permutations, swaps assignments for the mapping editor, and substitutes Morse-compatible characters. Exact mode creates its MT1 frame before substitution; reception reverses substitution before MT1 parsing. No extra security packet is added. React stores the alphabet in memory and clears receiver state when it changes. There is no backend key exchange or persistence. This simple substitution has no authentication; see the [character shuffle guide](security.md).
+
+## QR preparation, display, and reception
+
+`usePreparedQr` reads text as exact UTF-8 or a file as original bytes, validates the 1 MB limit, and creates a manifest with a fresh transfer ID and SHA-256. Stale preparations are cancelled by input identity. `qr-transfer.mjs` generates frames on demand rather than pre-rendering every QR image.
+
+`useQrPlayback` draws one frame on a canvas with `qrcode`, holds it for the selected interval, and advances through START, numbered DATA, END, then another loop. Marker holds are one second. Live size/speed changes preserve the current loop position. Larger codes render at increased canvas resolution; the display fits its container. Large view portals the same display to a modal overlay, with background content inert and keyboard focus contained until it closes. It cancels timers on pause, page hide, mode switch, or unmount.
+
+`useQrReceiver` owns camera streams, a `qr-scanner` instance, and a bounded in-memory collector. Camera permission is requested only on Start camera. A late stream granted after cancellation is stopped. Camera tracks and the scan engine are released on stop, completion, error, hiding the page, or unmount. Stopping during verification cancels the pending result while retaining chunks for re-verification on resume. Stale callbacks cannot publish into a new collector/session.
+
+The collector locks a transfer ID, retains at most 1 MB of unique chunks, verifies chunk CRC32, and checks a metadata-bound SHA-256 after both markers and all data arrive. Partial text/files are not released. Progress is based on unique original byte counts. Repeated START does not reset it. Switching transport or shared alphabets clears QR reception. QR display, camera scanning, and the image self-test are exclusive within one page.
+
+Vite bundles the scanner’s dynamically loaded fallback worker alongside the app. Camera images and decoded frames stay local; no backend is involved.

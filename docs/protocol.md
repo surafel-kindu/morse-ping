@@ -110,3 +110,33 @@ Changing the tone frequency changes the pitch, not these durations. The availabl
 The file example uses bytes 0–255 repeated, filename `sample.bin`, and type `application/octet-stream`. These values are calculated from the unshuffled timing sequence. They are not measured performance guarantees. Actual duration depends on the Morse lengths of the encoded content and metadata; successful reception also depends on hardware, noise, and echoes.
 
 [International Morse timing reference](https://morsecode.world/international/timing/)
+
+## QR frame protocol, version QRT1
+
+Every QR contains the literal prefix `QRT1|` followed by one JSON object. START (`t: "S"`) and END (`t: "E"`) contain the same manifest, with only `t` differing:
+
+```json
+{"t":"S","id":"32 lowercase hexadecimal characters","k":"text","n":"message.txt","m":"text/plain","s":672,"c":3,"z":240,"sh":false,"h":"64 lowercase hexadecimal SHA-256 characters"}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Random 16-byte transfer ID, lowercase hex |
+| `k`, `n`, `m` | Content kind (`text`/`file`), filename, MIME type |
+| `s` | Exact original byte size, 0–1,048,576 |
+| `c` | Data chunk count, `ceil(s / z)` |
+| `z` | Fixed chunk size, 240 bytes |
+| `sh` | Whether Base32 data payloads use the shared character shuffle |
+| `h` | SHA-256 of canonical UTF-8 metadata followed by original bytes |
+
+Canonical metadata is `JSON.stringify({k, n, m, s, c, z, sh})` in that exact key order, without extra whitespace. Concatenate those UTF-8 bytes and the unmodified content bytes before hashing. The transfer ID and marker type are excluded. Filename and MIME type are limited to 120 JavaScript string code units each. Raw frame text is capped at 2,000 code units.
+
+DATA frames have this form:
+
+```json
+{"t":"D","id":"same transfer ID","i":0,"p":"BASE32PAYLOAD","crc":"1234ABCD"}
+```
+
+`i` is a zero-based chunk index. `p` is unpadded canonical Base32 for up to 240 original bytes; apply the optional substitution after Base32 encoding and reverse it before decoding. `crc` is the eight-character uppercase CRC32 of that chunk’s original bytes, using the same CRC32 definition as MT1. The final chunk’s decoded length must match the remaining declared bytes. Empty files have zero DATA frames and complete from START plus END.
+
+The sender displays START for one second, each DATA for `1 / fps` seconds, END for one second, then loops. Encoding/rendering can add time. The receiver initializes from START or END, locks the transfer ID, accepts unique chunks in any order, discards corrupt chunks, and preserves progress on repeated markers. DATA before a manifest is ignored. Completion requires START, END, all chunks, and matching SHA-256. Full-checksum failure clears chunks for another loop. There is no reverse-channel acknowledgement; stop the sender manually when the receiver completes. See [QR recovery and limits](qr-transfer.md).

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SHUFFLE_ALPHABET, createShuffleMapping, generateShuffleCode, swapShuffleMapping } from '../lib/security.mjs';
 
-export default function SecurityPanel({ enabled, code, disabled, onToggle, onCodeChange, onForget }) {
+export default function SecurityPanel({ enabled, code, disabled, onToggle, onCodeChange, onForget, transport = 'morse' }) {
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -23,6 +23,6 @@ export default function SecurityPanel({ enabled, code, disabled, onToggle, onCod
       <p className="helper" id="secret-help">{mapping ? `A → ${mapping.forward.A} · B → ${mapping.forward.B} · C → ${mapping.forward.C}. ` : 'Generate a shuffle, then share it with the other device. '}Use the same alphabet on both devices. Basic obfuscation; no authentication.</p>
       {mapping && <details className="shuffle-editor"><summary>View or edit character mappings <span>↙</span></summary><p className="helper">Changing a mapping swaps two assignments so every character stays reversible. Copy the updated alphabet to the other device.</p><div className="mapping-grid">{[...SHUFFLE_ALPHABET].map(source => <label key={source}>{source} → <select aria-label={`Replace ${source} with`} value={mapping.forward[source]} disabled={disabled} onChange={event => change(swapShuffleMapping(code, source, event.target.value))}>{[...SHUFFLE_ALPHABET].map(character => <option key={character} value={character}>{character}</option>)}</select></label>)}</div></details>}
       {error && <p className="status error" role="alert">{error}</p>}
-    </> : <p className="helper">Characters go straight to Morse. Enable the shuffle on both devices for simple substitution.</p>}
+    </> : <p className="helper">{transport === 'qr' ? 'QR transfers preserve content with checksums.' : 'Characters go straight to Morse.'} Enable the shuffle on both devices for simple substitution.</p>}
   </section>;
 }
