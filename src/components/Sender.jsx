@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { formatTime } from '../lib/transfer.mjs';
 import { CardHeading, Status } from './Shared.jsx';
-export default function Sender({ inputKind, onKindChange, text, onTextChange, file, onFileChange, textMode, onModeChange, preparation, settings, audio }) {
+export default function Sender({ inputKind, onKindChange, text, onTextChange, file, onFileChange, textMode, secure, onModeChange, preparation, settings, audio }) {
   const textTab = useRef(null), fileTab = useRef(null);
   const { packet, error, loading } = preparation;
   const busy = audio.phase !== 'idle', sending = audio.phase === 'sending';
@@ -24,17 +24,18 @@ export default function Sender({ inputKind, onKindChange, text, onTextChange, fi
     </div>
     <div id="text-panel" role="tabpanel" aria-labelledby="text-tab" hidden={inputKind !== 'text'}>
       <label className="field-label" htmlFor="message">Your message</label><textarea id="message" rows={5} placeholder="A message worth sending…" value={text} disabled={inputDisabled} onChange={event => onTextChange(event.target.value)} />
-      <div className="field-footer"><span id="text-note">{plain ? 'Send letters, numbers & punctuation directly.' : 'Exact transfer keeps case, emoji & Unicode.'}</span><span id="input-count">{plain ? `${[...text].length} characters` : `${new TextEncoder().encode(text).length} bytes`}</span></div>
+      <div className="field-footer"><span id="text-note">{plain ? 'Send letters, numbers & punctuation directly.' : secure ? 'Encrypted transfer keeps case, emoji & Unicode.' : 'Exact transfer keeps case, emoji & Unicode.'}</span><span id="input-count">{plain ? `${[...text].length} characters` : `${new TextEncoder().encode(text).length} bytes`}</span></div>
     </div>
     <div id="file-panel" role="tabpanel" aria-labelledby="file-tab" hidden={inputKind !== 'file'}>
       <label className="file-drop" htmlFor="file"><span className="file-icon" aria-hidden="true">↥</span><strong>{file?.name || 'Choose a tiny file'}</strong><span>Any file type · up to 2 KB</span><input id="file" type="file" disabled={inputDisabled} onChange={event => onFileChange(event.target.files[0] || null)} /></label>
       <p className="helper">A photo is usually too large. Try a small .txt or .json file.</p>
     </div>
-    <label className="mode-label" htmlFor="mode">Encoding <select id="mode" value={inputKind === 'file' ? 'exact' : textMode} disabled={inputDisabled || inputKind === 'file'} onChange={event => onModeChange(event.target.value)}><option value="plain">Direct text · letters &amp; numbers</option><option value="exact">Exact transfer · Unicode / file</option></select></label>
+    <label className="mode-label" htmlFor="mode">Encoding <select id="mode" value={secure ? 'secure' : inputKind === 'file' ? 'exact' : textMode} disabled={secure || inputDisabled || inputKind === 'file'} onChange={event => onModeChange(event.target.value)}><option value="plain">Direct text · letters &amp; numbers</option><option value="exact">Exact transfer · Unicode / file</option>{secure && <option value="secure">Secure · encrypted text / file</option>}</select></label>
     <div className="estimate"><div><span>TRANSMISSION TIME</span><strong id="duration">{packet ? formatTime(seconds) : '—'}</strong></div><div><span>PAYLOAD</span><strong id="payload-size">{packet ? `${packet.count} ${packet.plain ? 'characters' : 'bytes'}` : '—'}</strong></div><span className={`tone-light ${sending && audio.playback.toneOn ? 'on' : ''}`} aria-label={sending && audio.playback.toneOn ? 'Tone on' : 'Tone off'} /></div>
     <progress value={audio.playback.progress} max={1} aria-label="Transmission progress" />
     <div className="button-row"><button className="primary" id="send" disabled={busy || !packet || loading} onClick={() => audio.send(packet)}>▶ Play Morse sound</button><button className="secondary" id="stop-send" disabled={!sending} onClick={audio.stopSending}>Stop</button></div>
     <Status id="send-status" {...displayedNotice} />
-    <details><summary>See the Morse code <span>↙</span></summary><pre className="morse-box" id="send-morse">{packet?.morse || ''}</pre><p className="helper">{plain ? 'Each letter, number, or supported punctuation mark goes directly to Morse. Text becomes uppercase with single spaces. Choose Text on the receiver; there is no checksum.' : 'Exact transfer encodes the original bytes, filename, and type in Morse-safe characters and adds a CRC32 checksum.'}</p></details>
+    {secure && packet && <div className="cipher-preview"><span className="field-label">Encrypted characters · ready for Morse</span><pre>{packet.wire.slice(0, 110)}…</pre><p className="helper">The shared code is never included in the signal.</p></div>}
+    <details><summary>See the Morse code <span>↙</span></summary><pre className="morse-box" id="send-morse">{packet?.morse || ''}</pre><p className="helper">{secure ? 'Encrypted bytes and protected metadata become Morse-safe characters. The receiver must unlock the whole packet with the shared code.' : plain ? 'Each letter, number, or supported punctuation mark goes directly to Morse. Text becomes uppercase with single spaces. Choose Text on the receiver; there is no checksum.' : 'Exact transfer encodes the original bytes, filename, and type in Morse-safe characters and adds a CRC32 checksum.'}</p></details>
   </section>;
 }

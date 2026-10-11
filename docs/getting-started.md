@@ -23,15 +23,18 @@ If an older copy of Morse Transfer is already running, stop its terminal process
 
 ## Choose matching modes
 
+**Secure transfer is enabled by default.** Generate a shared code on one device, share it separately, and enter it on the other. See the [security guide](security.md). Turn Secure transfer off on both to use Direct text or unencrypted Exact transfer.
+
 | Sender | Receiver “Listen as” | Use it for |
 | --- | --- | --- |
+| Secure transfer enabled · text or file | Secure transfer enabled | Encrypted original content, unlocked with the shared code |
 | Text → Direct text | Text · letters & numbers | Ordinary messages using A–Z, 0–9, and supported punctuation |
 | Text → Exact transfer | File / exact Unicode text | Emoji, Ethiopic text, mixed case, newlines, exact formatting |
 | File | File / exact Unicode text | Any file type up to 2,048 bytes |
 
 Direct text goes straight to Morse. The app does not wrap it in a binary frame. Received text is uppercase and repeated whitespace becomes one space. Unsupported characters produce an error before playback. A downloadable direct-text result is saved as a UTF-8 `.txt` file; this encoding is for the download, not for the Morse transmission.
 
-Exact mode encodes the original bytes into Morse-compatible Base32 characters. Metadata and a checksum let the receiver reconstruct the original content. Files automatically use exact mode. Switching back to Text preserves your previous text encoding choice.
+Exact mode encodes the original bytes into Morse-compatible Base32 characters. Metadata and a checksum let the receiver reconstruct the original content. Files use secure mode when Secure transfer is enabled, or unencrypted exact mode when it is off. Switching back to Text preserves your previous text encoding choice.
 
 ## Speaker-to-microphone workflow
 
@@ -41,13 +44,14 @@ Exact mode encodes the original bytes into Morse-compatible Base32 characters. M
 4. On the sender, enter text or choose a tiny file. Check the transmission estimate.
 5. Press **Play Morse sound**. Direct text appears incrementally in the received result; live Morse and decoded characters are available in the expandable signal section.
 6. For exact mode, wait for **CHECKSUM OK**, then use **Download original**. An incomplete or corrupt frame is not accepted as an original file.
-7. Press **Stop** on the receiver to release the microphone.
+7. For secure mode, wait for **Encrypted packet received**, press **Stop**, then **Unlock & authenticate**. Only an **AUTHENTICATED** result can be downloaded.
+8. Press **Stop** to release the microphone when finished; use **Forget code & clear result** after secure transfers.
 
 Playback, listening, and the synthetic self-test are mutually exclusive on a single app instance. Stop the active action before changing audio settings or receiver mode. Cancelling a pending microphone request prevents a subsequently granted stream from staying active.
 
 ## Local self-test
 
-Choose either receiver mode and press **Run audio self-test**. Text mode restores `HELLO 123`; exact mode restores `Hi 👋` with a valid checksum. The signal is synthesized and decoded in memory. This checks application logic without requesting microphone access or playing sound.
+Choose a receiver mode and press **Run audio self-test**. Text mode restores `HELLO 123`; exact mode restores `Hi 👋` with a valid checksum. Secure mode needs a shared code and leaves an encrypted test packet locked; press **Unlock & authenticate** to restore `Hi 👋`. The signal is synthesized and decoded in memory. This checks application logic without requesting microphone access or playing sound.
 
 ## Build and use on phones
 
@@ -102,4 +106,4 @@ After source changes, stop the preview, run `npm run build`, restart the preview
 
 ## Privacy
 
-Selected files, decoded content, and microphone samples stay in the browser. No analytics or upload endpoint is built in. The acoustic transmission itself is audible to nearby devices and people and is not encrypted. Stopping reception or leaving the page releases audio resources. Host/server access logging, if any, is controlled by your chosen hosting provider.
+Selected files, decoded content, and microphone samples stay in the browser. No analytics or upload endpoint is built in. The acoustic transmission itself is audible to nearby devices and people. Secure mode encrypts its content; Direct text and unencrypted Exact mode do not. Shared codes stay in page memory; see [security and privacy limits](security.md#protection-and-limits). Stopping reception or leaving the page releases audio resources. Host/server access logging, if any, is controlled by your chosen hosting provider.

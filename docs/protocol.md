@@ -54,7 +54,7 @@ Fields are separated by ordinary Morse word gaps:
 | `CHECKSUM` | Eight uppercase hexadecimal characters containing CRC32 |
 | `END` | Frame terminator |
 
-Base32 uses `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567`. Every character is representable by standard Morse. Receiver mode chooses whether decoded characters are displayed as plain text or interpreted as this file/Unicode protocol; the microphone detector itself is the same in both modes.
+Base32 uses `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567`. Every character is representable by standard Morse. Receiver mode chooses whether decoded characters are displayed as plain text or interpreted as this file/Unicode protocol; the microphone detector itself is shared by direct, exact, and secure modes.
 
 ### Header
 
@@ -80,6 +80,31 @@ A checksum failure produces an error and does not deliver that frame as a restor
 ### Scope
 
 MT1 is a small experimental one-way protocol. CRC32 detects accidental errors; it is not authentication or encryption. There is no acknowledgement, sequence number, automatic retry, chunking, resume, or forward error correction. A failed transfer must be resent in full.
+
+## Encrypted frame, version MTE1
+
+```text
+VVV MTE1 SALT NONCE CIPHERTEXT CHECKSUM END
+```
+
+| Field | Meaning |
+| --- | --- |
+| `SALT` | 16 random bytes, 26 unpadded Base32 characters |
+| `NONCE` | 12 random bytes, 20 unpadded Base32 characters |
+| `CIPHERTEXT` | AES-GCM encrypted UTF-8 MT1 frame followed by its 16-byte tag, in unpadded Base32 |
+| `CHECKSUM` | CRC32 over decoded salt, nonce, then ciphertext including tag |
+
+The shared code is 20 random bytes, displayed as 32 Base32 characters grouped with dashes. Decode the canonical, uppercase, whitespace/dash-free code to bytes. Import these as HKDF key material and derive a non-extractable 256-bit AES-GCM key with SHA-256, the decoded salt, and UTF-8 info:
+
+```text
+Morse Transfer / MTE1 / AES-256-GCM / HKDF-SHA-256
+```
+
+Use the same UTF-8 string as AES-GCM additional authenticated data, the decoded nonce as `iv`, and `tagLength: 128`. The encrypted plaintext is the complete validated MT1 frame as UTF-8, preserving the original payload and hiding the filename, type, and inner length. This suite is fixed; incoming data cannot select weaker algorithms or change a derivation work factor.
+
+Parsing requires exactly seven fields, canonical Base32, exact salt/nonce sizes, at least a 16-byte tag, an eight-character hexadecimal checksum, ciphertext no larger than 6,000 bytes, and frame text no longer than 9,800 characters. The recovered inner MT1 frame must pass its existing validation, including the 2,048-byte original payload limit. The 16,000-character decoder window fits the maximum outer frame. Secure reception does not accept MT1 or direct text as original content.
+
+The outer checksum is checked before showing **Locked**. Authentication is checked only on **Unlock & authenticate**. Wrong-code or altered-packet failures release no plaintext and preserve the captured packet for another attempt. The shared code is never transmitted. A fresh preparation generates a new salt and nonce; replaying a prepared sound repeats the existing ciphertext. There is no persistent replay protection or forward secrecy. See [security assumptions](security.md#protection-and-limits).
 
 ## Speed examples
 

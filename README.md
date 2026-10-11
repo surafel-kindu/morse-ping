@@ -4,11 +4,11 @@
 
 Send letters directly as Morse beeps, or transfer a tiny file to another device using its microphone. Processing stays in the browser; the app has no account system, upload endpoint, or application backend.
 
-| Direct text | File / exact Unicode |
-| --- | --- |
-| Letters, numbers, supported punctuation → Morse → sound → text | Original bytes → Base32 frame → Morse → sound → verified original |
-| Fast, live uppercase text | Preserves files, Unicode, case, emoji, and formatting |
-| No checksum | CRC32 corruption detection; maximum 2 KB |
+| Mode | Result | Protection |
+| --- | --- | --- |
+| **Secure transfer · default** | Exact text or file, unlocked with a shared code | AES-GCM encryption and authentication; original payload up to 2 KB |
+| Direct text | Live uppercase letters, numbers, supported punctuation | Unencrypted; no checksum |
+| File / exact Unicode | Original bytes, case, emoji, and formatting | Unencrypted; CRC32 detects corruption; maximum 2 KB |
 
 ## Quick start
 
@@ -55,13 +55,15 @@ See [phone setup and tunnel troubleshooting](docs/getting-started.md#temporary-h
 
 ## Your first transfer
 
-1. Open the app on both devices. Phones need an **HTTPS-hosted build** for microphone access; use the Cloudflare tunnel above for testing.
-2. Match **30 WPM** and **700 Hz**. Use **Direct text** on the sender and **Text · letters & numbers** on the receiver.
-3. Press **Start listening** on the receiver and allow microphone access.
-4. Enter `HELLO 123` on the sender and press **Play Morse sound**.
-5. Read the letters as they arrive, then stop listening.
+1. Open the app on both devices. Phones need HTTPS; use the Cloudflare tunnel above for testing.
+2. Leave **Secure transfer** enabled on both. Generate a code on one device and share it separately with the other. Enter the same code on both.
+3. Match **30 WPM** and **700 Hz**. Start listening on the receiver.
+4. Enter a short message or choose a tiny file on the sender and press **Play Morse sound**.
+5. When **Encrypted packet received** appears, stop listening and press **Unlock & authenticate**. Wait for **AUTHENTICATED** before downloading.
 
-For a file or exact Unicode text, choose **Exact transfer** on the sender and **File / exact Unicode text** on the receiver. Wait for **CHECKSUM OK** before downloading the original.
+Use **Forget code & clear result** when finished. Codes stay in this page’s memory and are cleared on reload. Read the [security guide](docs/security.md) for code sharing, what is encrypted, and protection limits.
+
+For a faster public message, turn Secure transfer off on both devices and choose Direct text → Text. Exact transfer → File / exact Unicode preserves original content with an unencrypted checksum.
 
 The app’s **Read the guide** link opens a built-in field guide with mode selection, setup steps, and troubleshooting.
 
@@ -69,7 +71,8 @@ The app’s **Read the guide** link opens a built-in field guide with mode selec
 
 | Guide | What it covers |
 | --- | --- |
-| [Getting started](docs/getting-started.md) | Installation, scripts, both modes, two-device setup, Cloudflare tunnels, HTTPS deployment |
+| [Getting started](docs/getting-started.md) | Installation, scripts, all modes, two-device setup, Cloudflare tunnels, HTTPS deployment |
+| [Security](docs/security.md) | Shared codes, encrypted transfers, authentication, threat model, protection limits |
 | [Architecture](docs/architecture.md) | React components, hooks, audio sessions, data flow, resource cleanup |
 | [Transfer protocol](docs/protocol.md) | Morse timing, Base32 framing, metadata, checksum, decoder rules |
 | [Troubleshooting](docs/troubleshooting.md) | Microphone access, noise, missed tones, mode mismatch, slow transfers |
@@ -97,6 +100,7 @@ src/
   hooks/                       Transfer preparation and audio lifecycle
   lib/morse.mjs                Alphabet, timing, Base32, CRC32, packet parser
   lib/transfer.mjs             Preparation, receiver modes, synthetic self-test
+  lib/security.mjs             Shared codes, HKDF, AES-GCM, encrypted frames
   audio/sessions.mjs           Playback and microphone resource ownership
   audio/tone-detector.mjs      Shared signal detector
   audio/receiver-worklet.mjs   Microphone processing off the UI thread
@@ -111,13 +115,13 @@ vite.config.mjs                React build and ES-module worklet bundling
 
 At 30 WPM, plain `HELLO WORLD` takes about **4.7 seconds**. A representative 1 KiB exact file takes about **14 minutes**, including framing; duration varies with its contents and metadata. These are calculated transmission times, not measured acoustic throughput. The app shows the duration for your input.
 
-Start at 20–30 WPM. Fifty WPM is experimental. Exact payloads are capped at 2,048 bytes. Sender and receiver must agree on mode, speed, and tone. Room noise, echo, clipping, browser audio processing, and background suspension affect reception.
+Start at 20–30 WPM. Fifty WPM is experimental. Exact and secure original payloads are capped at 2,048 bytes. Sender and receiver must agree on mode, speed, and tone. Room noise, echo, clipping, browser audio processing, and background suspension affect reception.
 
-CRC32 detects accidental corruption; it does not correct errors, authenticate the sender, or encrypt the audio. There is no acknowledgement, chunking, automatic retry, or resume. Resend a failed exact transfer from the beginning.
+CRC32 detects accidental corruption; it does not correct errors or authenticate a sender. Secure transfer adds AES-GCM encryption and authentication; Direct text and Exact transfer remain unencrypted. Encryption adds transmission overhead, included in the displayed estimate. There is no acknowledgement, chunking, automatic retry, or resume. Resend a failed exact transfer from the beginning.
 
 ## Validation
 
-Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, boundaries, corruption, sampled audio at 10–50 WPM with modest noise and jitter, and worklet processing without DOM globals. The browser self-test uses generated audio through the same detector and decoder. It does not exercise a physical speaker/microphone pair. Real two-device acoustic reception remains a device-specific test.
+Automated checks cover exact Unicode and arbitrary-byte recovery, direct text, boundaries, corruption, sampled audio at 10–50 WPM with modest noise and jitter, worklet processing without DOM globals, encrypted round trips, wrong codes, tampering with recomputed checksums, and Web Crypto interoperability. The browser self-test uses generated audio through the same detector and decoder. It does not exercise a physical speaker/microphone pair. Real two-device acoustic reception remains a device-specific test.
 
 ## References
 

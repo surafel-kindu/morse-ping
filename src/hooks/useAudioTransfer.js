@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { createTransmitter, createMicrophoneReceiver } from '../audio/sessions.mjs';
 import { createMessageDecoder, runAudioSelfTest } from '../lib/transfer.mjs';
+import { decryptPacket, normalizeSecret } from '../lib/security.mjs';
 const notice = (message, type = '') => ({ message, type });
 const emptySignal = { characters: '', morse: '' };
 
-export function useAudioTransfer(settings, receiveMode) {
+export function useAudioTransfer(settings, receiveMode, code = '') {
   const active = useRef(null);
   const [phase, setPhase] = useState('idle');
   const [sendNotice, setSendNotice] = useState(null);
@@ -24,6 +25,7 @@ export function useAudioTransfer(settings, receiveMode) {
   }, []);
   const current = session => active.current === session;
   function clear() {
+    if (active.current?.unlocking) { active.current.stop(); active.current = null; setPhase('idle'); }
     active.current?.decoder?.reset(); setSignal(emptySignal); setResult(null);
     setReceiveNotice(notice(active.current ? 'Signal cleared. Start a complete transmission.' : 'Microphone audio stays on this device.'));
   }
@@ -33,7 +35,7 @@ export function useAudioTransfer(settings, receiveMode) {
       onResult: value => {
         if (!current(session)) return;
         setResult(value);
-        setReceiveNotice(value.verified ? notice(`Transfer verified · ${value.bytes.length} bytes restored.`, 'success') : notice('Letters and numbers decoded directly. Text is uppercase; this mode has no checksum.'));
+        setReceiveNotice(value.locked ? notice('Encrypted packet received. Stop listening, then unlock with your shared code.') : value.encrypted ? notice(`Unlocked and authenticated · ${value.bytes.length} bytes restored.`, 'success') : value.verified ? notice(`Transfer verified · ${value.bytes.length} bytes restored.`, 'success') : notice('Letters and numbers decoded directly. Text is uppercase; this mode has no checksum.'));
       },
       onError: error => { if (current(session)) setReceiveNotice(notice(error.message, 'error')); },
     };
@@ -67,7 +69,7 @@ export function useAudioTransfer(settings, receiveMode) {
   function stopListening() {
     const session = active.current; if (!session || !['requesting', 'listening'].includes(phase)) return;
     session.decoder?.flush(); active.current = null; session.stop(); setPhase('idle'); setLevel({ amplitude: 0, on: false });
-    setReceiveNotice(value => value.type ? value : notice('Microphone released. Received text is shown above; incomplete exact transfers need to be resent.'));
+    setReceiveNotice(value => session.decoder?.getResult()?.locked ? notice('Microphone released. Encrypted packet ready; unlock with your shared code.') : value.type ? value : notice('Microphone released. Received text is shown above; incomplete exact transfers need to be resent.'));
   }
   async function listen() {
     if (active.current) return;
@@ -88,7 +90,7 @@ export function useAudioTransfer(settings, receiveMode) {
       const ready = await session.resource.start();
       if (!current(session) || !ready) return;
       setPhase('listening');
-      setReceiveNotice(notice(`Listening for ${receiveMode === 'plain' ? 'direct text' : 'a file / exact Unicode transfer'}. Match sender settings and keep this page active.`));
+      setReceiveNotice(notice(`Listening for ${receiveMode === 'secure' ? 'an encrypted transfer' : receiveMode === 'plain' ? 'direct text' : 'a file / exact Unicode transfer'}. Match sender settings and keep this page active.`));
     } catch (error) {
       if (!current(session)) return;
       active.current = null; session.stop(); setPhase('idle'); setLevel({ amplitude: 0, on: false });
@@ -97,15 +99,29 @@ export function useAudioTransfer(settings, receiveMode) {
   }
   async function selfTest() {
     if (active.current) return;
+    if (receiveMode === 'secure') {
+      try { normalizeSecret(code); } catch (error) { setReceiveNotice(notice(error.message, 'error')); return; }
+    }
     clear();
     const session = { cancelled: false, stop: () => { session.cancelled = true; } };
     active.current = session; setPhase('testing'); setReceiveNotice(notice('Testing generated audio through the tone detector and decoder…'));
     try {
       await new Promise(resolve => setTimeout(resolve, 0));
-      await runAudioSelfTest({ ...settings, mode: receiveMode, ...messageCallbacks(session), cancelled: () => !current(session) });
-      if (current(session)) setReceiveNotice(notice(`Audio self-test passed: ${receiveMode === 'plain' ? 'letters and numbers decoded directly' : 'original Unicode text restored'}. Physical two-device testing is still needed.`, 'success'));
+      await runAudioSelfTest({ ...settings, mode: receiveMode, code, keepLocked: receiveMode === 'secure', ...messageCallbacks(session), cancelled: () => !current(session) });
+      if (current(session)) setReceiveNotice(receiveMode === 'secure' ? notice('Encrypted audio self-test passed. A test packet is ready; press Unlock & authenticate with your shared code.', 'success') : notice(`Audio self-test passed: ${receiveMode === 'secure' ? 'encrypted Unicode text restored and authenticated' : receiveMode === 'plain' ? 'letters and numbers decoded directly' : 'original Unicode text restored'}. Physical two-device testing is still needed.`, 'success'));
     } catch (error) { if (current(session)) setReceiveNotice(notice(error.message, 'error')); }
     if (current(session)) { active.current = null; setPhase('idle'); }
   }
-  return { phase, sendNotice, resetSendNotice: () => setSendNotice(null), receiveNotice, playback, level, signal, result, clear, send, stopSending, listen, stopListening, selfTest };
+  async function unlock() {
+    if (active.current || !result?.locked) return;
+    const frame = result.frame;
+    const session = { unlocking: true, stop: () => {} };
+    active.current = session; setPhase('unlocking'); setReceiveNotice(notice('Unlocking and checking authentication…'));
+    try {
+      const restored = await decryptPacket(frame, code);
+      if (current(session)) messageCallbacks(session).onResult(restored);
+    } catch (error) { if (current(session)) setReceiveNotice(notice(error.message, 'error')); }
+    if (current(session)) { active.current = null; setPhase('idle'); }
+  }
+  return { phase, sendNotice, resetSendNotice: () => setSendNotice(null), receiveNotice, playback, level, signal, result, clear, unlock, send, stopSending, listen, stopListening, selfTest };
 }
